@@ -15,7 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
- * Version $Id: util.c,v 1.1 2003/01/30 21:30:19 ernstl Exp $
+ * Version $Id: util.c,v 1.1.1.1 2003/01/30 21:30:19 ernstl Exp $
  */
 
 #include "util.h"
@@ -24,7 +24,7 @@
 #include <libgimp/gimp.h>
 
 #ifndef lint
-static char vcid[] GCC_UNUSED = "$Id: util.c,v 1.1 2003/01/30 21:30:19 ernstl Exp $";
+static char vcid[] GCC_UNUSED = "$Id: util.c,v 1.1.1.1 2003/01/30 21:30:19 ernstl Exp $";
 #endif /* lint */
 
 gint

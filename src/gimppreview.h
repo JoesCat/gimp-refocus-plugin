@@ -17,7 +17,7 @@
  * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
  * Boston, MA 02111-1307, USA.
  *
- * Version $Id: gimppreview.h,v 1.1 2003/01/30 21:30:18 ernstl Exp $
+ * Version $Id: gimppreview.h,v 1.1.1.1 2003/01/30 21:30:18 ernstl Exp $
  */
 
 #ifndef GIMP_PREVIEW_H

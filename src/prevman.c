@@ -15,7 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
- * Version $Id: prevman.c,v 1.1 2003/01/30 21:30:18 ernstl Exp $
+ * Version $Id: prevman.c,v 1.1.1.1 2003/01/30 21:30:18 ernstl Exp $
  */
 
 #include <string.h>
@@ -23,7 +23,7 @@
 #include "util.h"
 
 #ifndef lint
-static char vcid[] GCC_UNUSED = "$Id: prevman.c,v 1.1 2003/01/30 21:30:18 ernstl Exp $";
+static char vcid[] GCC_UNUSED = "$Id: prevman.c,v 1.1.1.1 2003/01/30 21:30:18 ernstl Exp $";
 #endif /* lint */
 
 /**

@@ -15,7 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
- * Version $Id: refocus.h,v 1.1 2003/01/30 21:30:19 ernstl Exp $
+ * Version $Id: refocus.h,v 1.1.1.1 2003/01/30 21:30:19 ernstl Exp $
  */
 
 #ifndef REFOCUS_H_INCLUDED

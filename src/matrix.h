@@ -15,7 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
- * Version $Id: matrix.h,v 1.1 2003/01/30 21:30:18 ernstl Exp $
+ * Version $Id: matrix.h,v 1.1.1.1 2003/01/30 21:30:18 ernstl Exp $
  */
 
 #ifndef MATRIX_H_INCLUDED

@@ -15,7 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
- * Version $Id: tilebuf.h,v 1.1 2003/01/30 21:30:19 ernstl Exp $
+ * Version $Id: tilebuf.h,v 1.1.1.1 2003/01/30 21:30:19 ernstl Exp $
  */
 #ifndef TILEBUF_H_INCLUDED
 #define TILEBUF_H_INCLUDED
