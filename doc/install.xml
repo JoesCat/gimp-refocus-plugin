@@ -5,6 +5,11 @@
  <!ENTITY install SYSTEM "install-inc.xml">
  ]>
  <chapter>
-  <title>&prog;</title>
+  <title>Refocus</title>
+  <para>This is the ASCII version of the installation instructions,
+  that was automatically generated from the DocBook source.
+  The doc.html and doc.pdf versions of these instructions
+  in the doc directory are more readable.
+  </para>
   &install;
  </chapter>
