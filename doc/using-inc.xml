@@ -1,11 +1,17 @@
 <?xml version='1.0' ?> 
   <sect1 id="using" xreflabel="Using the plug-in">
     <title>Using the plug-in</title>
+  <para>You can start the plug-in by clicking with the right
+    mouse-button in the image, and then select from the
+    <guibutton>Filters</guibutton> menu <guibutton>Enhance/Refocus</guibutton>.</para>
     <para>The plug-in window looks something like this:</para>
     <mediaobject>
       <imageobject>
         <imagedata fileref="images/gui.png"/>
       </imageobject>
+    <textobject>
+      <phrase>GUI screen dump</phrase>
+    </textobject>
     </mediaobject>
     <para>The plug-in window contains a preview of the image on the left
     and on the right a set of
@@ -30,7 +36,7 @@
         <varlistentry>
           <term><guibutton>Preview</guibutton></term>
           <listitem>
-            <para>Compute the new tranformation matrix and show the results in the
+            <para>Compute the new transformation matrix and show the results in the
             preview. 
             Because computing the transformation matrix can take a lot of time, it
             is not automatically recomputed, when the parameters in the
@@ -178,32 +184,43 @@
     <title>Technical background</title>
     <para>A wide range of image transformations
       can be described mathematically as convolutions.
-    A convolution is a lineair transformation where each
+    A convolution is a linear transformation where each
     destination pixel is the weighted sum of the pixels in
-    the neighbourhood of the original pixel.</para>
+    the neighborhood of the original pixel.</para>
     <para>For example, the following matrix describes the convolution
     where each pixel is the average of the source pixel and its 8
     immediate neighbors:</para>
-    <informalequation>
-      <mediaobject>
-        <imageobject>
-          <imagedata fileref="images/avg-conv.png"/>
-        </imageobject>
-        <textobject role="tex">
-          <phrase>\pmatrix{1/9&amp;1/9&amp;1/9\cr1/9&amp;1/9&amp;1/9\cr1/9&amp;1/9&amp;1/9\cr}</phrase>
-        </textobject>
-      </mediaobject>
-    </informalequation>
-    <para>A wide range of image degradations, e.g. bad focussing and motion blur, can adequately be described with convolutions. </para>
+    <informaltable frame="none" colsep="0" rowsep="0">
+      <tgroup cols="3">
+        <tbody>
+          <row>
+            <entry>1/9</entry>
+            <entry>1/9</entry>
+            <entry>1/9</entry>
+          </row>
+          <row>
+            <entry>1/9</entry>
+            <entry>1/9</entry>
+            <entry>1/9</entry>
+          </row>
+          <row>
+            <entry>1/9</entry>
+            <entry>1/9</entry>
+            <entry>1/9</entry>
+          </row>
+        </tbody>
+      </tgroup>
+    </informaltable>
+    <para>A wide range of image degradations, e.g. bad focusing and motion blur, can adequately be described with convolutions. </para>
     <para>In this case we are interested in undo-ing the effect of a
       convolution. Using Fourier analysis it is possible to show that for
       each convolution there exists an inverse convolution. </para>
     <para>
       Unfortunately, this inverse convolution is of little practical use.
-      The reason is that image tranformations virtually always introduce
+      The reason is that image transformations virtually always introduce
       some form of error, e.g. due to noise in the scanner or simply
       round-off errors. The unmodified inverse convolution greatly
-      ampliflies these errors. In many cases the result of the
+      amplifies these errors. In many cases the result of the
       inverse convolution is completely dominated by the noise.
       If you want to get a feeling what this means, run the plug-in
       with <parameter>Gauss</parameter> = 2 and <parameter>Correlation</parameter> and <parameter>Noise</parameter> = 0.
@@ -249,7 +266,7 @@
     <para>For technical background on the FIR Wiener deconvolution see
       <xref linkend="Jain89"/>.</para>
     <sect3>
-      <title>Modelling the convolution</title>
+      <title>Modeling the convolution</title>
       <para>In most cases you don't know precisely what convolution
         caused the image degradation.
         There are two convolutions that are frequently used to
@@ -279,7 +296,7 @@
         <para>The circular convolution spreads each source point
         uniformly across a small disk with a fixed radius.
           Technically this describes the effects of using
-          a (ideal) lense that is not correctly focussed.
+          a (ideal) lens that is not correctly focused.
         </para>
       </sect4>
       <sect4>
@@ -291,7 +308,7 @@
         <para>The <parameter>Radius</parameter> parameter determines
           the radius of the circular convolution. 
           The <parameter>Gauss</parameter> parameter determines
-        the width of Gaussians convolution.</para>
+        the width of Gaussian convolution.</para>
         <para>The actual convolution that is used by the plug-in
         is in fact the result of convolving both the Gaussian and
         the circular convolution with one another.
@@ -304,7 +321,7 @@
         </para>
         <para>In practice, I found that in most cases the circular
         convolution works much better than the Gaussian convolution.
-          The Gaussian convolution has a very long tail, so mathemically
+          The Gaussian convolution has a very long tail, so mathematically
           the result of the convolution also depends on source pixels
           at a large distance from the original source pixel.
           The FIR Wiener inverse of a Gaussian convolution in
@@ -316,7 +333,7 @@
           circular convolution in general influenced by source pixels
           in the immediate neighborhood of the original source pixel.
           Another reason is that a circular convolution is theoretically
-          a good mathematical model for images that are slightly unfocussed.
+          a good mathematical model for images that are slightly unfocused.
         </para>
       </sect4>
       <sect4>
@@ -333,8 +350,8 @@
         </itemizedlist>
         <para>Sharpening applies a small convolution matrix that
         increases the difference between a source pixel and its
-        immediate neighbours. FIR Wiener filtering is a more
-        general technique because it allows a much larger neighbourhood 
+        immediate neighbors. FIR Wiener filtering is a more
+        general technique because it allows a much larger neighborhood 
           and better parameterizations.
           Sharpening only works when your images are very slightly
           blurred. 
@@ -355,13 +372,13 @@
         <para>In general, unsharp masking produces better results
           than sharpening. 
           This is probably caused by the fact that unsharp masking
-          uses a larger neighbourhood than sharpening.
+          uses a larger neighborhood than sharpening.
         </para>
         <para>From a theoretical point of view unsharp masking
         must always introduce artifacts. Even under optimal
         circumstances it can never completely undo the effect of
         blurring. For Wiener filtering it is possible to prove
-        that it is the optimal linair filter.</para>
+        that it is the optimal linear filter.</para>
         <para>In practice I found that in virtually all cases
           the results of the FIR Wiener filter were at least
           as good as those of unsharp masking. The FIR Wiener filter

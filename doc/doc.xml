@@ -28,6 +28,8 @@
     <para>This plug-in has a preview that helps you select the best parameters.</para>
     <para>Instructions for installing the plug-in are described in <xref linkend="installation"/>. </para>
     <para>Instructions for using the plug-in are described in <xref linkend="using"/>. </para>
+    <para>The home page for the Refocus plug-in is located at
+      <ulink url="http://refocus.sourceforge.net">http://refocus.sourceforge.net</ulink>.</para>
   </sect1>
   &install;
   &using;

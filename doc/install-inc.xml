@@ -43,12 +43,12 @@
       It generates a library that is specifically tuned to your processor and compiler.
       &prog; needs some routines for solving a linear system of equations.
       By default &prog; uses an unoptimized version from the CLAPACK distribution
-      (see <ulink url="http://www.netlib.org/clapack"></ulink>).
+      (see <ulink url="http://www.netlib.org/clapack/"></ulink>).
        </para>
     </sect3>
     <sect3>
       <title>How to use ATLAS</title>
-      <itemizedlist mark="bullet">
+      <itemizedlist mark="disc">
         <listitem>
           <para>
           Make ATLAS generate its libraries.
@@ -58,22 +58,23 @@
           In the following examples we will use Linux_PII as the chosen name.</para></listitem>
         <listitem>
           <para>
-          Go to the subdirectory lib/Linux_PII and run <command>make</command>.
+          Go to the subdirectory lib/Linux_PII and run <command>make</command>.</para>
         <programlisting format="linespecific">cd lib/Linux_PII
 make</programlisting>
+        <para>
         This will generate a gzipped tar file that contains the generated libraries
         and include files.
         </para>
         </listitem>
         <listitem>
           <para>
-          Copy the gzipped tar file to the &prog; directory and unpack it.
+          Copy the gzipped tar file to the &prog; directory and unpack it.</para>
         <programlisting format="linespecific">cp ~/ATLAS/lib/atlas3.4.1_Linux_PII.tgz ~/&prog;
 cd ~/&prog;
 zcat atlas3.4.1_Linux_PII.tgz |tar xvf -
 mv Linux_PII lib-atlas
 </programlisting>
-        </para></listitem>
+        </listitem>
         <listitem>
           <para>
               If you have already run <command>configure</command>
