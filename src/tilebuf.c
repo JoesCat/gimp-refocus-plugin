@@ -15,7 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
- * Version $Id: tilebuf.c,v 1.1 2003/01/30 21:30:19 ernstl Exp $
+ * Version $Id: tilebuf.c,v 1.2 2004/05/13 17:55:53 ernstl Exp $
  */
 
 #include "tilebuf.h"
@@ -23,7 +23,7 @@
 #include <string.h>
 
 #ifndef lint
-static char vcid[] GCC_UNUSED = "$Id: tilebuf.c,v 1.1 2003/01/30 21:30:19 ernstl Exp $";
+static char vcid[] GCC_UNUSED = "$Id: tilebuf.c,v 1.2 2004/05/13 17:55:53 ernstl Exp $";
 #endif /* lint */
 
 /**
@@ -227,8 +227,10 @@ fix_bottom_boundary (TileStripBuffer * buf, const gint y_hi)
     case TB_BOUNDARY_MIRROR:
       {
         register gint y;
+        const gint max_y = MIN (buf->real_y + buf->real_height,
+                                2 * y_hi - 1 - buf->real_y);
 
-        for (y = y_hi; y < buf->real_y + buf->real_height; y++)
+        for (y = y_hi; y < max_y; y++)
           {
             copy_row (buf, buf->real_x, 2 * (y_hi - 1) - y, buf->real_width,
                       y);
@@ -287,11 +289,13 @@ initialize_buf (TileStripBuffer * buf, TileSource * source,
   buf->first_time = TRUE;
   buf->boundary_type = boundary_type;
   buf->data = g_new0 (guchar, buf->real_height * buf->row_stride);
-  for (y = buf->y - tile_height ();
-       y <= buf->y + tile_height (); y += tile_height ())
+  for (y = buf->real_y;
+       y < buf->real_y + buf->real_height;
+       y += tile_height ())
     {
-      for (x = buf->x - tile_width ();
-           x <= buf->x + buf->width; x += tile_width ())
+      for (x = buf->real_x;
+           x < buf->real_x + buf->real_width;
+           x += tile_width ())
         {
           copy_tile_to_buf (buf, source, x, y);
         };
@@ -328,8 +332,9 @@ shift_buf (TileStripBuffer * buf, TileSource * source)
                buf->row_stride * (tile_height () + buf->border_width));
       buf->y += tile_height ();
       buf->real_y = buf->y - buf->border_width;
-      for (x = buf->x - tile_width ();
-           x <= buf->x + buf->width; x += tile_width ())
+      for (x = buf->real_x;
+           x < buf->real_x + buf->real_width;
+           x += tile_width ())
         {
           copy_tile_to_buf (buf, source, x, buf->y + tile_height ());
         };
