@@ -21,11 +21,11 @@
  * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
  * Boston, MA 02111-1307, USA.
  *
- * Version $Id: gimppreview.c,v 1.1 2003/01/30 21:30:18 ernstl Exp $
+ * Version $Id: gimppreview.c,v 1.2 2004/05/13 18:20:48 ernstl Exp $
  */
 
 #ifndef lint
-static char vcid[] = "$Id: gimppreview.c,v 1.1 2003/01/30 21:30:18 ernstl Exp $";
+static char vcid[] = "$Id: gimppreview.c,v 1.2 2004/05/13 18:20:48 ernstl Exp $";
 #endif /* lint */
 
 #include <stdio.h>
@@ -59,6 +59,7 @@ static void gimp_preview_forall (GtkContainer * container,
                                  gpointer callback_data);
 gboolean gimp_preview_update_preview_idle_fun (gpointer data);
 void gimp_preview_schedule_update (GimpPreview * preview);
+void gimp_preview_realized_signal_handler(GtkWidget *widget, gpointer user_data);
 
 #define PROGRESS_BAR_HEIGHT (10)
 #define PREVIEW_SIZE (100)
@@ -264,6 +265,12 @@ gimp_preview_set_scale_amount(GimpPreview *preview, gdouble scale_amount)
 }
 
 
+void gimp_preview_realized_signal_handler(GtkWidget *widget, gpointer preview){
+  gdk_window_set_cursor (gtk_widget_get_parent_window (PREVIEW_DATA (GIMP_PREVIEW(preview))->image),
+                         gdk_cursor_new (GDK_FLEUR));
+}
+
+
 /*
  * Initialization, which is done when the preview widget is first created
  * by GTK's internal mechanisms.
@@ -374,6 +381,10 @@ gimp_preview_new_with_args (GimpDrawable * drawable, gint cb_preview_size,
   frame = gtk_frame_new (NULL);
   PREVIEW_DATA (preview)->event_box = event_box;
   gtk_widget_set_parent (event_box, GTK_WIDGET (preview));
+  g_signal_connect_after(G_OBJECT(PREVIEW_DATA (preview)->image),
+                         "realize",
+                         gimp_preview_realized_signal_handler,
+                         preview);
 
   if (preview_size != PREVIEW_FIXED_SIZE)
     {
