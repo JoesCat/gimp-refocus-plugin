@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
- * Version $Id: refocus.c,v 1.1 2003/01/30 21:30:19 ernstl Exp $
+ * Version $Id: refocus.c,v 1.2 2004/05/13 18:14:29 ernstl Exp $
  */
 
 #include <stdlib.h>
@@ -38,7 +38,7 @@
 #include "util.h"
 
 #ifndef lint
-static char vcid[] GCC_UNUSED = "$Id: refocus.c,v 1.1 2003/01/30 21:30:19 ernstl Exp $";
+static char vcid[] GCC_UNUSED = "$Id: refocus.c,v 1.2 2004/05/13 18:14:29 ernstl Exp $";
 #endif /* lint */
 
 GimpDrawable *drawable;
@@ -365,7 +365,7 @@ gint_entry_callback (GtkWidget * widget, gint * data)
 }
 
 gboolean
-preview_progress_update_fun (const gpointer data, double arg)
+preview_progress_update_fun (const gpointer data, gdouble arg)
 {
   gint event_id = GPOINTER_TO_INT (data);
   return (gimp_preview_progress_set_fraction
@@ -515,6 +515,7 @@ dialog ()
   my_widgets.mat_width_entry = entry =
     gtk_spin_button_new_with_range (0.0, 25.0, 1.0);
   gtk_spin_button_set_digits (GTK_SPIN_BUTTON (entry), 0);
+  gtk_spin_button_set_numeric (GTK_SPIN_BUTTON (entry), FALSE);
   gtk_table_attach_defaults (GTK_TABLE (table), entry, 1, 2, 0, 1);
   g_signal_connect (G_OBJECT (entry), "changed",
                     G_CALLBACK (gint_entry_callback), &my_config.mat_width);
@@ -530,6 +531,7 @@ dialog ()
     gtk_spin_button_new_with_range (0.0, 25.0, 0.1);
   gtk_table_attach_defaults (GTK_TABLE (table), entry, 1, 2, 1, 2);
   gtk_spin_button_set_digits (GTK_SPIN_BUTTON (entry), 2);
+  gtk_spin_button_set_numeric (GTK_SPIN_BUTTON (entry), FALSE);
   g_signal_connect (G_OBJECT (entry), "changed",
                     G_CALLBACK (gdouble_entry_callback), &my_config.radius);
   gtk_widget_show (entry);
@@ -543,6 +545,7 @@ dialog ()
   my_widgets.alpha_entry = entry =
     gtk_spin_button_new_with_range (0.0, 25.0, 0.1);
   gtk_spin_button_set_digits (GTK_SPIN_BUTTON (entry), 2);
+  gtk_spin_button_set_numeric (GTK_SPIN_BUTTON (entry), FALSE);
   gtk_table_attach_defaults (GTK_TABLE (table), entry, 1, 2, 2, 3);
   g_signal_connect (G_OBJECT (entry), "changed",
                     G_CALLBACK (gdouble_entry_callback), &my_config.alpha);
@@ -557,6 +560,7 @@ dialog ()
   my_widgets.gamma_entry = entry =
     gtk_spin_button_new_with_range (0.0, 1.0, 0.05);
   gtk_spin_button_set_digits (GTK_SPIN_BUTTON (entry), 3);
+  gtk_spin_button_set_numeric (GTK_SPIN_BUTTON (entry), FALSE);
   gtk_table_attach_defaults (GTK_TABLE (table), entry, 1, 2, 3, 4);
   g_signal_connect (G_OBJECT (entry), "changed",
                     G_CALLBACK (gdouble_entry_callback), &my_config.gamma);
@@ -571,6 +575,7 @@ dialog ()
   my_widgets.noise_entry = entry =
     gtk_spin_button_new_with_range (0.0, 1.0, 0.01);
   gtk_spin_button_set_digits (GTK_SPIN_BUTTON (entry), 5);
+  gtk_spin_button_set_numeric (GTK_SPIN_BUTTON (entry), FALSE);
 
   gtk_table_attach_defaults (GTK_TABLE (table), entry, 1, 2, 4, 5);
   g_signal_connect (G_OBJECT (entry), "changed",
