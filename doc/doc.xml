@@ -1,5 +1,5 @@
 <?xml version='1.0'?>
-<!DOCTYPE article PUBLIC "-//OASIS//DTD DocBook XML V4.1.2//EN" "docbook/xml-dtd-4.1.2-1.0-8/docbookx.dtd" [
+<!DOCTYPE article PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN" "/usr/share/sgml/docbook/xml-dtd-4.2-1.0-14/docbookx.dtd"[
  <!ENTITY prog "refocus">
  <!ENTITY using SYSTEM "using-inc.xml">
  <!ENTITY install SYSTEM "install-inc.xml">
