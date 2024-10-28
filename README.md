@@ -26,21 +26,29 @@ Instructions for installing and using the plug-in are included in the distributi
 ## Examples
 
 The following images give you an impression of the effect of this plug-in.
+
 ![](img/squirrel.jpg)
+
 Here is the refocussed image of the squirrel
+
 ![](img/squirrel-refocussed.jpg)
+
 This Wilber image (unfocussed)
+
 ![](img/wilber-unsharp.png)
+
 and optimal refocussing
+
 ![](img/wilber-refocussed.png)
 
 ## News
 
-The last published version of Refocus is 0.9.0. Feb 3, 2003)
+- V-0-9-1, 2014 Apr 7 - Additional patches by Ernst Lippe 2004, and added patches by Gentoo, copied from [FreeBSD 2014](https://www.freshports.org/graphics/gimp-refocus-plugin/).
+- V-0-9-0, 2003 feb 3, Ernst Lippe - The last published version of Refocus.
 
 ## Links
 
-The Refocus home page (2004) was https://refocus.sourceforge.net. The Sourceforge project home page was https://sourceforge.net/projects/refocus. 
+The Refocus home page (2004) was https://refocus.sourceforge.net. The Sourceforge project home page was https://sourceforge.net/projects/refocus. Code was copied and converted from cvs to git format.
 
 ## Author
 
