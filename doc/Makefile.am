@@ -17,5 +17,5 @@ INSTALL.txt: install-no-links.xml
 PNG: tex-math-equations.tex
 	latex tex-math-equations.tex
 	dvi2bitmap tex-math-equations.dvi
-clean:
+clean-local:
 	-rm tex-math-equations* install-no-links.xml
