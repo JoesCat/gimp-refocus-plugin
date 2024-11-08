@@ -3,6 +3,7 @@
 - Introduction
 - Documentation
 - Examples
+- Build and Install
 - News
 - Links
 - Author
@@ -40,6 +41,38 @@ This Wilber image (unfocussed)
 and optimal refocussing
 
 ![](img/wilber-refocussed.png)
+
+## Build and Install
+
+As there are many files in the src directory, it will be easier to build
+Refocus using the autoconf tools. You can use gimptool-2.0 to install or
+use make install. To build Refocus from Git master requires 2 preparatory
+steps:
+
+First, you need to create the `./configure` script if you do not have it yet
+```sh
+autoreconf -i  (or use 'autoreconf --install --force' for more modern setups)
+automake --foreign -Wall
+```
+
+Second, you then use the usual steps to compile the Refocus plugin.
+Various operating systems and setups will need ./configure options set.
+The INSTALLATION file has detailed info for `configure' options.
+Example install steps shown below are for Linux:
+```sh
+./configure --prefix=/usr
+make
+make check
+sudo make install
+```
+and to uninstall, use `make uninstall`.
+
+If you want to use `gimptool-2.0`, you can select to run either
+`make install-bin` for a single local user, or if you have administration
+root access, you can run `sudo make install-admin-bin`.
+
+If Gimp is already running in your system, exit and restart Gimp for the
+new Refocus plug-in to be detected in menu "Filters > Enhance > Refocus".
 
 ## News
 

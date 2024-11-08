@@ -168,6 +168,13 @@ fi
 AC_SUBST(GIMP_CFLAGS)
 AC_SUBST(GIMP_LIBS)
 AM_CONDITIONAL([HAVEGIMPTOOL],[test "${GIMPTOOL}"x != x])
+# Pass GIMP_LIBDIR to automake for default GIMP plug-ins directory
+GIMP_GIMPLIBDIR=`$PKG_CONFIG --variable=gimplibdir gimp-2.0`
+# Seems that gimp does not follow libdir of the distro, so just replacing prefix
+GIMP_PREFIX=`$PKG_CONFIG --variable=exec_prefix gimp-2.0`
+GIMP_RELATIVE=${GIMP_GIMPLIBDIR#$GIMP_PREFIX}
+GIMP_BINDIR=\${exec_prefix}"$GIMP_RELATIVE"
+AC_SUBST(GIMP_BINDIR)
 
 GTK_CFLAGS=
 GTK_LIBS=

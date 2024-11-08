@@ -1,11 +1,12 @@
 /* Refocus plug-in
- * Copyright (C) 1999-2003 Ernst Lippe
- * 
+ * Copyright (C) 1999-2004... Ernst Lippe - (original author)
+ * Copyright (C) 2024 Jose Da Silva (updates and improvements)
+ *
  * Based on the Convolution Matrix plug-in by Lauri Alanko <la@iki.fi>
  *
- * This program is free software; you can redistribute it and/or modify
+ * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -14,22 +15,24 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
- *
- * Version $Id: refocus.c,v 1.2 2004/05/13 18:14:29 ernstl Exp $
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
+
+#if __has_include("refocus-config.h")
+#include "refocus-config.h"
+#else
+#define PLUGIN_VERSION "refocus is local"
+#endif
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
 #include <string.h>
 #include <libgimp/gimp.h>
-#include <gtk/gtk.h>
+#include <libgimp/gimpui.h>
 #include <sys/types.h>
 #include <signal.h>
 #include <unistd.h>
-#include "gimppreview.h"
 #include "refocus.h"
 #include "prevman.h"
 #include "matrix.h"
@@ -37,54 +40,83 @@
 #include "bdclosure.h"
 #include "util.h"
 
-#ifndef lint
-static char vcid[] GCC_UNUSED = "$Id: refocus.c,v 1.2 2004/05/13 18:14:29 ernstl Exp $";
-#endif /* lint */
+/* No i18n for now */
+#define _(x)	x
+#define d_(x)	x
+#define N_(x)	x
 
-GimpDrawable *drawable;
+#define SCALE_WIDTH	  150
+#define ENTRY_WIDTH	  4
+
+#define MATRIX_MIN	  0.0
+#define MATRIX_MAX	  25.0
+#define MATRIX_STEP	  1.0
+#define RADIUS_MIN	  0.0
+#define RADIUS_MAX	  25.0
+#define RADIUS_STEP	  0.1
+#define ALPHA_MIN	  0.0
+#define ALPHA_MAX	  25.0
+#define ALPHA_STEP	  0.1
+#define GAMMA_MIN	  0.0
+#define GAMMA_MAX	  1.0
+#define GAMMA_STEP	  0.05
+#define NOISE_FACTOR_MIN  0.0
+#define NOISE_FACTOR_MAX  1.0
+#define NOISE_FACTOR_STEP 0.01
+
+static const char PROCEDURE_NAME[] = "plug-in-refocus";
+static const char SHORT_DESCRIPTION[] = "Refocus using FIR Wiener Deconvolution";
+static const char LONG_DESCRIPTION[] =
+  "The Refocus Gimp plug-in can be used to sharpen images by deblurring focus-blur or gaussian-blur.\n\n"
+  "Frequently, when processing images, e.g. scanning photo's or slides, the images can become slightly blurred. "
+  "The blurred impression of these images is due to the fact that image pixels are averaged with their neighbors. "
+  "Blurred images don't have sharp boundaries and look as though they have been taken with an unfocussed camera.\n\n"
+  "This plug-in attempts to 'refocus' the image. "
+  "In some cases Refocus can produce better results than plug-ins such as sharpen or unsharp mask.";
+
+typedef struct {
+  gint    mat_width;
+  gdouble radius;
+  gdouble alpha;
+  gdouble gamma;
+  gdouble noise_factor;
+} config;
+
+typedef struct {
+  config       *config;
+  GimpDrawable *drawable;
+  CMat         *matrix;
+} ref_params;
 
 /* Declare local functions. */
 static void query (void);
 static void run (const gchar *name,
                  gint nparams,
-                 const GimpParam * param,
-                 gint * nreturn_vals, GimpParam ** return_vals);
-static gint dialog ();
-static void doit (void);
-static void check_config (void);
+                 const GimpParam *param,
+                 gint *nreturn_vals, GimpParam **return_vals);
+static gboolean refocus_dialog (ref_params *params);
+static gint doit (ref_params *params);
+static int  check_config_values (config *my_config, gboolean reset);
+static void refocus_help (const gchar *help_id, gpointer help_data);
 
 GimpPlugInInfo PLUG_IN_INFO = {
-  NULL,                         /* init_proc */
-  NULL,                         /* quit_proc */
-  query,                        /* query_proc */
-  run,                          /* run_proc */
+  NULL,  /* init_proc  */
+  NULL,  /* quit_proc  */
+  query, /* query_proc */
+  run,   /* run_proc   */
 };
 
-gint bytes;
-gint sx1, sy1, sx2, sy2;
-gint run_flag = 0;
-CMat *matrix = NULL;
 gboolean matrix_needs_updating = TRUE;
 
-typedef struct
-{
-  gint mat_width;
-  gdouble radius, alpha, gamma, noise_factor;
-}
-config;
-
-const config default_config = {
-  5,
-  1,
-  0.0,
-  0.5,
-  0.01
+static const config default_config = {
+  5,     /* matrix_width */
+  1,     /* radius       */
+  0.0,   /* gaussian     */
+  0.5,   /* correlation  */
+  0.01   /* noise factor */
 };
 
-config my_config;
-
-struct
-{
+struct {
   GtkWidget *preview;
   GtkWidget *mat_width_entry;
   GtkWidget *radius_entry;
@@ -93,18 +125,15 @@ struct
   GtkWidget *noise_entry;
   GtkWidget *ok_button;
   GtkWidget *update_preview_button;
-}
-my_widgets;
-
+} my_widgets;
 
 MAIN ()
 
-static void query ()
-{
+static void query (void) {
   static GimpParamDef args[] = {
     {GIMP_PDB_INT32, "run_mode", "Interactive, non-interactive"},
     {GIMP_PDB_IMAGE, "image", "Input image (unused)"},
-    {GIMP_PDB_DRAWABLE, "drawable", "Input drawable"},
+    {GIMP_PDB_DRAWABLE, "drawable", "Input drawable to modify"},
     {GIMP_PDB_INT32, "mat_size", "Size of matrix"},
     {GIMP_PDB_FLOAT, "radius", "Circle radius"},
     {GIMP_PDB_FLOAT, "gauss", "Parameter for Gaussian convolution"},
@@ -114,484 +143,337 @@ static void query ()
   static GimpParamDef *return_vals = NULL;
   static gint nreturn_vals = 0;
 
-  gimp_install_procedure ("plug_in_refocus",
-                          "Refocus with FIR Wiener Deconvolution",
-                          "",
-                          "Ernst Lippe",
-                          "Ernst Lippe",
-                          "1999",
-                          "<Image>/Filters/Enhance/Refocus ...",
+  gimp_install_procedure (PROCEDURE_NAME,
+                          SHORT_DESCRIPTION,
+                          LONG_DESCRIPTION,
+  /* copyright author  */ "Ernst Lippe, 1999, <ernstl@planet.nl>",
+  /* copyright license */ "GPL3+",
+  /* build date        */ "2024",
+                          "Refocus",
                           "RGB*, GRAY*",
                           GIMP_PLUGIN,
                           G_N_ELEMENTS(args), nreturn_vals, args, return_vals);
+
+  gimp_plugin_menu_register (PROCEDURE_NAME, "<Image>/Filters/Enhance");
 }
 
-static void
-run (const gchar *name, gint n_params, const GimpParam *param,
-     gint *nreturn_vals, GimpParam **return_vals)
-{
-  static GimpParam values[1];
-  GimpRunMode run_mode;
-  GimpPDBStatusType status = GIMP_PDB_SUCCESS;
+static void run (const gchar *name, gint n_params, const GimpParam *param,
+                 gint *nreturn_vals, GimpParam **return_vals) {
+  static GimpParam  values[1];
+  config            my_config;
+  GimpDrawable     *drawable;
+  ref_params        my_params;
+  GimpRunMode       run_mode;
+  GimpPDBStatusType status;
 
-  (void) name;                  /* Shut up warnings about unused parameters. */
-  /* Sleep so the debugger can attach to this proces */
-  /* sleep(30); */
-  *nreturn_vals = 1;
-  *return_vals = values;
+  /* sleep(30); */ /* Sleep so the debugger can attach to this process */
+  *nreturn_vals  = 1;
+  *return_vals   = values;
+  values[0].type = GIMP_PDB_STATUS;
+  status         = GIMP_PDB_SUCCESS;
+
+  if (param[0].type != GIMP_PDB_INT32 || strcmp(name, PROCEDURE_NAME) != 0) {
+    values[0].data.d_status = GIMP_PDB_CALLING_ERROR;
+    return;
+  }
 
   run_mode = param[0].data.d_int32;
 
-  /*  Get the specified drawable  */
-  drawable = gimp_drawable_get (param[2].data.d_drawable);
+  /* Get the specified drawable */
+  my_params.drawable = drawable = gimp_drawable_get (param[2].data.d_drawable);
 
-  my_config = default_config;
-  /* Although the convolution should work fine with a tiny cache
+  /* Make sure that the drawable is gray or RGB color */
+  if (!gimp_drawable_is_rgb (drawable->drawable_id) &&
+      !gimp_drawable_is_gray (drawable->drawable_id)) {
+    g_message("Image is not RGB, RGBA, gray or grayA!");
+    status = GIMP_PDB_EXECUTION_ERROR;;
+    return;
+  }
+
+  /* Although the convolution should work fine with a tiny cache,
      it is made bigger to improve scrolling speed */
   gimp_tile_cache_ntiles (20);
 
-  if (run_mode == GIMP_RUN_NONINTERACTIVE)
-    {
-      if (n_params != 8)
-        status = GIMP_PDB_CALLING_ERROR;
-      else
-        {
-          my_config.mat_width = param[3].data.d_int32;
-          my_config.radius = param[4].data.d_float;
-          my_config.alpha = param[5].data.d_float;
-          my_config.gamma = param[6].data.d_float;
-          my_config.noise_factor = param[7].data.d_float;
-          check_config ();
+  my_config = default_config;
+  my_params.config = &my_config;
+  my_params.matrix = NULL;
+
+  switch (run_mode) {
+    case GIMP_RUN_WITH_LAST_VALS:
+      gimp_get_data (PROCEDURE_NAME, &my_config);
+      gimp_ui_init (PROCEDURE_NAME, TRUE);
+      break;
+
+    case GIMP_RUN_NONINTERACTIVE:
+      if (n_params != 8) {
+        g_message("Incorrect number of input parameters!");
+        status = GIMP_PDB_EXECUTION_ERROR;;
+      } else {
+        my_config.mat_width = param[3].data.d_int32;
+        my_config.radius = param[4].data.d_float;
+        my_config.alpha = param[5].data.d_float;
+        my_config.gamma = param[6].data.d_float;
+        my_config.noise_factor = param[7].data.d_float;
+        if (check_config_values (&my_config, FALSE)) {
+          status = GIMP_PDB_EXECUTION_ERROR;;
         }
-    }
-  else
-    {
-      gimp_get_data ("plug_in_refocus", &my_config);
+      }
+      break;
 
-      if (run_mode == GIMP_RUN_INTERACTIVE)
-        {
-          /* Oh boy. We get to do a dialog box, because we can't really expect the
-           * user to set us up with the right values using gdb.
-           */
-          check_config ();
-          if (!dialog ())
-            {
-              /* The dialog was closed, or something similarly evil happened. */
-              status = GIMP_PDB_EXECUTION_ERROR;
-            }
-        }
-    }
+    case GIMP_RUN_INTERACTIVE:
+      gimp_get_data (PROCEDURE_NAME, &my_config);
+      check_config_values (&my_config, TRUE);
+      gimp_ui_init (PROCEDURE_NAME, TRUE);
+      /* Oh boy. We get to do a dialog box, because we can't really expect
+       * the user to set this up with the right values using gdb.
+       */
+      if (!refocus_dialog (&my_params)) {
+        /* The dialog was closed, or something similarly evil happened. */
+        status = GIMP_PDB_EXECUTION_ERROR;
+      }
+      break;
 
-  if (status == GIMP_PDB_SUCCESS)
-    {
+    default:
+      break;
+  }
 
-      /*  Make sure that the drawable is gray or RGB color  */
-      if (gimp_drawable_is_rgb (drawable->drawable_id) ||
-          gimp_drawable_is_gray (drawable->drawable_id))
-        {
-          doit ();
+  if (status == GIMP_PDB_SUCCESS) {
+    if (doit (&my_params))
+      status = GIMP_PDB_EXECUTION_ERROR;
+    else if (run_mode == GIMP_RUN_INTERACTIVE)
+      gimp_set_data (PROCEDURE_NAME, &my_config, sizeof (my_config));
 
-          if (run_mode != GIMP_RUN_NONINTERACTIVE)
-            gimp_displays_flush ();
-          if (run_mode == GIMP_RUN_INTERACTIVE)
-            gimp_set_data ("plug_in_refocus", &my_config, sizeof (my_config));
-        }
-      else
-        {
-          status = GIMP_PDB_EXECUTION_ERROR;
-        }
-      gimp_drawable_detach (drawable);
-    }
+    if (run_mode != GIMP_RUN_NONINTERACTIVE)
+      gimp_displays_flush ();
 
-  values[0].type = GIMP_PDB_STATUS;
+    gimp_drawable_detach (drawable);
+  }
+
   values[0].data.d_status = status;
 }
 
- /* Matrix computing  */
-void
-set_matrix_needs_updating (gboolean update_needed)
-{
-  matrix_needs_updating = update_needed;
-  if (my_widgets.update_preview_button)
-    {
-      gtk_widget_set_sensitive (my_widgets.update_preview_button,
-                                matrix_needs_updating);
-    }
-}
-
-void
-update_matrix (void)
- /* Recompute matrix if needed */
-{
+static void update_matrix (ref_params *params) {
+  /* Recompute matrix if needed */
   CMat circle, gaussian, convolution;
 
-  if (matrix_needs_updating)
-    {
-      if (matrix)
-        {
-          finish_c_mat (matrix);
-        };
-      make_gaussian_convolution (my_config.alpha, &gaussian,
-                                 my_config.mat_width);
-      make_circle_convolution (my_config.radius, &circle,
-                               my_config.mat_width);
+  if (params->matrix)
+    finish_c_mat (params->matrix);
+
+  make_gaussian_convolution (params->config->alpha, &gaussian,
+                             params->config->mat_width);
+  make_circle_convolution (params->config->radius, &circle,
+                           params->config->mat_width);
 #ifdef RF_DEBUG
-      fprintf (stderr, "mat_width=%d alpha=%f radius=%f gamma=%f noise=%f\n",
-               my_config.mat_width, my_config.alpha, my_config.radius,
-               my_config.gamma, my_config.noise_factor);
-      fprintf (stderr, "Gauss\n");
-      print_c_mat (stderr, &gaussian);
-      fprintf (stderr, "Circle\n");
-      print_c_mat (stderr, &circle);
+  fprintf (stderr, "mat_width=%d alpha=%f radius=%f gamma=%f noise=%f\n",
+           params->config->mat_width, params->config->alpha,
+           params->config->radius, params->config->gamma,
+           params->config->noise_factor);
+  fprintf (stderr, "Gauss\n");
+  print_c_mat (stderr, &gaussian);
+  fprintf (stderr, "Circle\n");
+  print_c_mat (stderr, &circle);
 #endif
 
-      /* TODO: must use normal convolution */
-      init_c_mat (&convolution, my_config.mat_width);
-      convolve_star_mat (&convolution, &gaussian, &circle);
-      matrix = compute_g_matrix (&convolution, my_config.mat_width,
-                                 my_config.gamma,
-                                 my_config.noise_factor, 0.0, TRUE);
-      finish_c_mat (&convolution);
-      finish_c_mat (&gaussian);
-      finish_c_mat (&circle);
-      set_matrix_needs_updating (FALSE);
-    }
+  /* TODO: must use normal convolution */
+  init_c_mat (&convolution, params->config->mat_width);
+  convolve_star_mat (&convolution, &gaussian, &circle);
+  params->matrix = compute_g_matrix (&convolution, params->config->mat_width,
+                                      params->config->gamma,
+                                      params->config->noise_factor, 0.0, TRUE);
+  finish_c_mat (&convolution);
+  finish_c_mat (&gaussian);
+  finish_c_mat (&circle);
 }
-
-
-/***************************************************
- * GUI stuff
- */
-
-static void
-set_busy_cursor (GtkWidget * widget, gboolean busy_on)
-{
-  GdkCursor *cursor = (busy_on) ? gdk_cursor_new (GDK_WATCH) : NULL;
-
-  gdk_window_set_cursor (GTK_WIDGET (widget)->window, cursor);
-}
-
-static void
-redraw_all (void)
-{
-  gtk_spin_button_set_value (GTK_SPIN_BUTTON (my_widgets.mat_width_entry),
-                             my_config.mat_width);
-  gtk_spin_button_set_value (GTK_SPIN_BUTTON (my_widgets.radius_entry),
-                             my_config.radius);
-  gtk_spin_button_set_value (GTK_SPIN_BUTTON (my_widgets.alpha_entry),
-                             my_config.alpha);
-  gtk_spin_button_set_value (GTK_SPIN_BUTTON (my_widgets.gamma_entry),
-                             my_config.gamma);
-  gtk_spin_button_set_value (GTK_SPIN_BUTTON (my_widgets.noise_entry),
-                             my_config.noise_factor);
-}
-
-static void
-close_callback (GtkWidget * widget, gpointer data)
-{
-  (void) widget;                /* Shut up warnings about unused parameters. */
-  (void) data;
-  gtk_main_quit ();
-}
-
-static void
-ok_callback (GtkWidget * widget, gpointer data)
-{
-  (void) widget;                /* Shut up warnings about unused parameters. */
-  run_flag = 1;
-  gtk_widget_destroy (GTK_WIDGET (data));
-}
-
 
 /* Checks that the configuration is valid for the image type */
-static void
-check_config (void)
-{
-}
-
-
-static void
-defaults_callback (GtkWidget * widget, gpointer data)
-{
-  (void) widget;                /* Shut up warnings about unused parameters. */
-  (void) data;
-  gtk_spin_button_set_value (GTK_SPIN_BUTTON (my_widgets.mat_width_entry),
-                             default_config.mat_width);
-  gtk_spin_button_set_value (GTK_SPIN_BUTTON (my_widgets.radius_entry),
-                             default_config.radius);
-  gtk_spin_button_set_value (GTK_SPIN_BUTTON (my_widgets.alpha_entry),
-                             default_config.alpha);
-  gtk_spin_button_set_value (GTK_SPIN_BUTTON (my_widgets.gamma_entry),
-                             default_config.gamma);
-  gtk_spin_button_set_value (GTK_SPIN_BUTTON (my_widgets.noise_entry),
-                             default_config.noise_factor);
-  check_config ();
-  redraw_all ();
-}
-
-static void
-update_callback (GtkWidget * widget, gpointer data)
-{
-  (void) widget;                /* Shut up warnings about unused parameters. */
-  (void) data;
-  set_busy_cursor (widget, TRUE);
-  update_matrix ();
-  gimp_preview_update (MY_GIMP_PREVIEW (my_widgets.preview));
-  set_busy_cursor (widget, FALSE);
-}
-
-static void
-gdouble_entry_callback (GtkWidget * widget, gdouble * data)
-{
-  const gdouble epsilon = 1e-10;
-  gdouble new_value = gtk_spin_button_get_value (GTK_SPIN_BUTTON (widget));
-  if (fabs (new_value - *data) > epsilon)
-    {
-      *data = new_value;
-      set_matrix_needs_updating (TRUE);
+static int check_config_values (config *my_config, gboolean reset) {
+  if (reset) {
+    /* reset value inside limits if out of bounds */
+    if (my_config->mat_width < MATRIX_MIN) my_config->mat_width = MATRIX_MIN;
+    if (my_config->mat_width > MATRIX_MAX) my_config->mat_width = MATRIX_MAX;
+    if (my_config->radius < RADIUS_MIN) my_config->radius = RADIUS_MIN;
+    if (my_config->radius > RADIUS_MAX) my_config->radius = RADIUS_MAX;
+    if (my_config->alpha < ALPHA_MIN) my_config->alpha = ALPHA_MIN;
+    if (my_config->alpha > ALPHA_MAX) my_config->alpha = ALPHA_MAX;
+    if (my_config->gamma < GAMMA_MIN) my_config->gamma = GAMMA_MIN;
+    if (my_config->gamma > GAMMA_MAX) my_config->gamma = GAMMA_MAX;
+    if (my_config->noise_factor < NOISE_FACTOR_MIN)
+      my_config->noise_factor = NOISE_FACTOR_MIN;
+    if (my_config->noise_factor > NOISE_FACTOR_MAX)
+      my_config->noise_factor = NOISE_FACTOR_MAX;
+  } else {
+    /* report error if parameter is out of bounds */
+    if (my_config->mat_width < MATRIX_MIN ||
+        my_config->mat_width > MATRIX_MAX ||
+        my_config->radius < RADIUS_MIN ||
+        my_config->radius > RADIUS_MAX ||
+        my_config->alpha < ALPHA_MIN ||
+        my_config->alpha > ALPHA_MAX ||
+        my_config->gamma < GAMMA_MIN ||
+        my_config->gamma > GAMMA_MAX ||
+        my_config->noise_factor < NOISE_FACTOR_MIN ||
+        my_config->noise_factor > NOISE_FACTOR_MAX) {
+      g_message("Bad input parameter!");
+      return 1;
     }
+  }
+#ifdef RF_DEBUG
+  fprintf (stderr,
+           "my_config{ matrix=%d, radius=%g, alpha=%g, gamma=%g, noise=%g }\n",
+           my_config->mat_width, my_config->radius, my_config->alpha,
+           my_config->gamma, my_config->noise_factor);
+#endif
+  return 0;
 }
 
-static void
-gint_entry_callback (GtkWidget * widget, gint * data)
-{
-  gint new_value =
-    gtk_spin_button_get_value_as_int (GTK_SPIN_BUTTON (widget));
-  if (new_value != *data)
-    {
-      *data = new_value;
-      set_matrix_needs_updating (TRUE);
-    }
+gboolean preview_progress_update_fun (const gpointer data, gdouble arg) {
+  return TRUE;
 }
 
-gboolean
-preview_progress_update_fun (const gpointer data, gdouble arg)
-{
-  gint event_id = GPOINTER_TO_INT (data);
-  return (gimp_preview_progress_set_fraction
-          (MY_GIMP_PREVIEW (my_widgets.preview), event_id, arg));
-}
-
-static void
-preview_callback (GtkWidget * widget, myGimpPreviewEvent * event, gpointer data)
-{
-  TileSource source;
-  TileSink sink;
-  gint row;
-  guchar *buf;
-  const gint im_width = event->image_width;
-  const gint im_height = event->image_height;
-  const gint image_x = event->image_x;
-  const gint image_y = event->image_y;
+static void preview_callback (GtkWidget * widget, ref_params *params) {
+  GimpDrawablePreview *preview;
+  GimpPreview *ptr;
+  gint32       preview_ID;
+  gint         image_x, image_y, im_width, im_height, bppImg;
+  const Babl  *format;
+  TileSource   source;
+  TileSink     sink;
+  gint         row;
+  guchar      *buf;
   gboolean event_is_current = TRUE;
   BDClosure update_progress_closure;
 
-  if (matrix)
-    {
-      update_matrix ();
-      tile_source_init_from_drawable (&source, drawable, image_x, image_y,
-                                      im_width, im_height);
-      tile_sink_init_for_preview (&sink, drawable, image_x, image_y,
-                                  im_width, im_height);
-      gimp_preview_progress_set_fraction (MY_GIMP_PREVIEW (my_widgets.preview),
-                                          event->event_id, 0);
-      bd_closure_init (&update_progress_closure,
-                       preview_progress_update_fun,
-                       GINT_TO_POINTER (event->event_id));
+  preview = GIMP_DRAWABLE_PREVIEW (widget);
+  ptr = GIMP_PREVIEW (preview);
+  gimp_preview_get_position (ptr, &image_x, &image_y);
+  gimp_preview_get_size (ptr, &im_width, &im_height);
 
-      convolve_image (&source, &sink, image_x, image_y,
-                      im_width, im_height,
-                      TB_BOUNDARY_MIRROR,
-                      matrix, 2 * my_config.mat_width + 1,
-                      &update_progress_closure);
-      buf = g_new (guchar, im_width * drawable->bpp);
-      for (row = 0; event_is_current && (row < im_height); row++)
-        {
-          tile_sink_get_row (&sink, buf, image_x, image_y + row, im_width);
-          event_is_current =
-            gimp_preview_draw_unscaled_row (MY_GIMP_PREVIEW (my_widgets.preview),
-                                            event->event_id,
-                                            gimp_drawable_type (drawable->drawable_id),
-                                            row, buf);
-        };
-      g_free (buf);
-      tile_sink_free_buffers (&sink);
-    }
+  preview_ID = gimp_drawable_preview_get_drawable_id (preview);
+  format = gimp_drawable_get_format (preview_ID);
+  bppImg = babl_format_get_bytes_per_pixel(format);
+
+  update_matrix (params);
+  tile_source_init_from_drawable (&source, params->drawable, image_x, image_y,
+                                  im_width, im_height);
+  tile_sink_init_for_preview (&sink, params->drawable, image_x, image_y,
+                              im_width, im_height);
+  bd_closure_init (&update_progress_closure,
+                   preview_progress_update_fun,
+                   GINT_TO_POINTER (preview_ID));
+  convolve_image (&source, &sink, image_x, image_y,
+                  im_width, im_height,
+                  TB_BOUNDARY_MIRROR,
+                  params->matrix, 2 * params->config->mat_width + 1,
+                  &update_progress_closure);
+  buf = g_new (guchar, im_height * im_width * bppImg);
+  for (row = 0; event_is_current && (row < im_height); row++) {
+    tile_sink_get_row (&sink, &buf[row * im_width * bppImg],
+                       image_x, image_y + row, im_width);
+  };
+  gimp_preview_draw_buffer (ptr, buf, im_width * bppImg);
+  g_free (buf);
+  tile_sink_free_buffers (&sink);
 }
 
-static gint
-dialog ()
-{
-  GtkWidget *dlg;
-  GtkWidget *button;
-  GtkWidget *label;
-  GtkWidget *entry;
-  GtkWidget *outbox;
-  GtkWidget *vpaned;
-  GtkWidget *empty_box;
+static gint refocus_dialog (ref_params *params) {
+  GtkWidget *dialog;
+  GtkWidget *main_vbox;
   GtkWidget *table;
   GtkWidget *preview;
-  gchar **argv;
-  gint argc;
+  GtkObject *entry;
+  gdouble    m_width;
+  gboolean  run;
 
-  argc = 1;
-  argv = g_new (gchar *, 1);
-  argv[0] = g_strdup ("refocus");
+  m_width = params->config->mat_width;
 
-  gtk_init (&argc, &argv);
-  gtk_rc_parse (gimp_gtkrc ());
+  dialog = gimp_dialog_new (_("Refocus"), "refocus", NULL, 0,
+                            refocus_help, PROCEDURE_NAME,
 
-  dlg = gtk_dialog_new ();
-  gtk_window_set_title (GTK_WINDOW (dlg), "Refocus");
-  gtk_window_set_position (GTK_WINDOW (dlg), GTK_WIN_POS_MOUSE);
-  g_signal_connect (G_OBJECT (dlg), "destroy",
-                    G_CALLBACK (close_callback), NULL);
+                            GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
+                            GTK_STOCK_OK,     GTK_RESPONSE_OK,
 
-  /*  Action area  */
-  my_widgets.ok_button = button = gtk_button_new_with_label ("OK");
-  GTK_WIDGET_SET_FLAGS (button, GTK_CAN_DEFAULT);
-  g_signal_connect (G_OBJECT (button), "clicked",
-                    G_CALLBACK (ok_callback), G_OBJECT (dlg));
-  gtk_box_pack_start (GTK_BOX (GTK_DIALOG (dlg)->action_area), button, TRUE,
-                      TRUE, 0);
-  gtk_widget_grab_default (button);
-  gtk_widget_show (button);
+                            NULL);
 
-  button = gtk_button_new_with_label ("Defaults");
-  GTK_WIDGET_SET_FLAGS (button, GTK_CAN_DEFAULT);
-  g_signal_connect_object (G_OBJECT (button), "clicked",
-                           G_CALLBACK (defaults_callback), G_OBJECT (dlg), 0);
-  gtk_box_pack_start (GTK_BOX (GTK_DIALOG (dlg)->action_area), button, TRUE,
-                      TRUE, 0);
-  gtk_widget_show (button);
+  main_vbox = gtk_vbox_new (FALSE, 12);
+  gtk_container_set_border_width (GTK_CONTAINER (main_vbox), 12);
+  gtk_container_add (GTK_CONTAINER (GTK_DIALOG (dialog)->vbox), main_vbox);
+  gtk_widget_show (main_vbox);
 
-  my_widgets.update_preview_button = button =
-    gtk_button_new_with_label ("Preview");
-  GTK_WIDGET_SET_FLAGS (button, GTK_CAN_DEFAULT);
-  g_signal_connect_object (G_OBJECT (button), "clicked",
-                           G_CALLBACK (update_callback), G_OBJECT (dlg), 0);
-  gtk_box_pack_start (GTK_BOX (GTK_DIALOG (dlg)->action_area), button, TRUE,
-                      TRUE, 0);
-  gtk_widget_show (button);
-
-  button = gtk_button_new_with_label ("Cancel");
-  GTK_WIDGET_SET_FLAGS (button, GTK_CAN_DEFAULT);
-  g_signal_connect_object (G_OBJECT (button), "clicked",
-                           G_CALLBACK (close_callback), G_OBJECT (dlg), 0);
-  gtk_box_pack_start (GTK_BOX (GTK_DIALOG (dlg)->action_area), button, TRUE,
-                      TRUE, 0);
-  gtk_widget_show (button);
-
-
-  /* Outbox */
-  outbox = gtk_hpaned_new ();
-  gtk_box_pack_start (GTK_BOX (GTK_DIALOG (dlg)->vbox), outbox, TRUE, TRUE,
-                      0);
-
-  /* Outbox:Preview */
-  vpaned = gtk_vpaned_new ();
-  preview = my_widgets.preview = gimp_preview_new (drawable);
-  g_signal_connect (G_OBJECT (preview), "update_preview",
-                    G_CALLBACK (preview_callback), (gpointer) NULL);
-  gtk_paned_pack1 (GTK_PANED (outbox), vpaned, TRUE, TRUE);
-  gtk_paned_pack1 (GTK_PANED (vpaned), preview, TRUE, TRUE);
-  empty_box = gtk_hbox_new (TRUE, 0);
-  gtk_paned_pack2 (GTK_PANED (vpaned), empty_box, TRUE, TRUE);
-  gtk_widget_show (empty_box);
-  gtk_widget_show (vpaned);
+  preview = gimp_drawable_preview_new_from_drawable_id (params->drawable->drawable_id);
+  gtk_box_pack_start (GTK_BOX (main_vbox), preview, TRUE, TRUE, 0);
   gtk_widget_show (preview);
+  g_signal_connect (preview, "invalidated",
+                    G_CALLBACK (preview_callback),
+                    params);
 
-  /* Outbox:Table */
-  table = gtk_table_new (5, 2, FALSE);
-  gtk_paned_pack2 (GTK_PANED (outbox), table, TRUE, TRUE);
-
-
-  /* mat_width */
-
-  label = gtk_label_new ("Matrix Size");
-  gtk_table_attach_defaults (GTK_TABLE (table), label, 0, 1, 0, 1);
-  gtk_widget_show (label);
-
-  my_widgets.mat_width_entry = entry =
-    gtk_spin_button_new_with_range (0.0, 25.0, 1.0);
-  gtk_spin_button_set_digits (GTK_SPIN_BUTTON (entry), 0);
-  gtk_spin_button_set_numeric (GTK_SPIN_BUTTON (entry), FALSE);
-  gtk_table_attach_defaults (GTK_TABLE (table), entry, 1, 2, 0, 1);
-  g_signal_connect (G_OBJECT (entry), "changed",
-                    G_CALLBACK (gint_entry_callback), &my_config.mat_width);
-  gtk_widget_show (entry);
-
-  /* Radius */
-
-  label = gtk_label_new ("Radius");
-  gtk_table_attach_defaults (GTK_TABLE (table), label, 0, 1, 1, 2);
-  gtk_widget_show (label);
-
-  my_widgets.radius_entry = entry =
-    gtk_spin_button_new_with_range (0.0, 25.0, 0.1);
-  gtk_table_attach_defaults (GTK_TABLE (table), entry, 1, 2, 1, 2);
-  gtk_spin_button_set_digits (GTK_SPIN_BUTTON (entry), 2);
-  gtk_spin_button_set_numeric (GTK_SPIN_BUTTON (entry), FALSE);
-  g_signal_connect (G_OBJECT (entry), "changed",
-                    G_CALLBACK (gdouble_entry_callback), &my_config.radius);
-  gtk_widget_show (entry);
-
-  /* Alpha */
-
-  label = gtk_label_new ("Gauss");
-  gtk_table_attach_defaults (GTK_TABLE (table), label, 0, 1, 2, 3);
-  gtk_widget_show (label);
-
-  my_widgets.alpha_entry = entry =
-    gtk_spin_button_new_with_range (0.0, 25.0, 0.1);
-  gtk_spin_button_set_digits (GTK_SPIN_BUTTON (entry), 2);
-  gtk_spin_button_set_numeric (GTK_SPIN_BUTTON (entry), FALSE);
-  gtk_table_attach_defaults (GTK_TABLE (table), entry, 1, 2, 2, 3);
-  g_signal_connect (G_OBJECT (entry), "changed",
-                    G_CALLBACK (gdouble_entry_callback), &my_config.alpha);
-  gtk_widget_show (entry);
-
-  /* gamma */
-
-  label = gtk_label_new ("Correlation");
-  gtk_table_attach_defaults (GTK_TABLE (table), label, 0, 1, 3, 4);
-  gtk_widget_show (label);
-
-  my_widgets.gamma_entry = entry =
-    gtk_spin_button_new_with_range (0.0, 1.0, 0.05);
-  gtk_spin_button_set_digits (GTK_SPIN_BUTTON (entry), 3);
-  gtk_spin_button_set_numeric (GTK_SPIN_BUTTON (entry), FALSE);
-  gtk_table_attach_defaults (GTK_TABLE (table), entry, 1, 2, 3, 4);
-  g_signal_connect (G_OBJECT (entry), "changed",
-                    G_CALLBACK (gdouble_entry_callback), &my_config.gamma);
-  gtk_widget_show (entry);
-
-  /* noise ratio */
-
-  label = gtk_label_new ("Noise");
-  gtk_table_attach_defaults (GTK_TABLE (table), label, 0, 1, 4, 5);
-  gtk_widget_show (label);
-
-  my_widgets.noise_entry = entry =
-    gtk_spin_button_new_with_range (0.0, 1.0, 0.01);
-  gtk_spin_button_set_digits (GTK_SPIN_BUTTON (entry), 5);
-  gtk_spin_button_set_numeric (GTK_SPIN_BUTTON (entry), FALSE);
-
-  gtk_table_attach_defaults (GTK_TABLE (table), entry, 1, 2, 4, 5);
-  g_signal_connect (G_OBJECT (entry), "changed",
-                    G_CALLBACK (gdouble_entry_callback),
-                    &my_config.noise_factor);
-  gtk_widget_show (entry);
-
+  table = gtk_table_new (2, 5, FALSE);
+  gtk_table_set_col_spacings (GTK_TABLE (table), 6);
+  gtk_table_set_row_spacings (GTK_TABLE (table), 6);
+  gtk_box_pack_start (GTK_BOX (main_vbox), table, FALSE, FALSE, 0);
   gtk_widget_show (table);
-  gtk_widget_show (outbox);
 
-  gtk_widget_show (dlg);
-  redraw_all ();
-  gimp_preview_update (MY_GIMP_PREVIEW (preview));
-  gtk_main ();
-  gdk_flush ();
-  return run_flag;
+  entry = gimp_scale_entry_new (GTK_TABLE (table), 0, 0,
+                                _("Matrix Size"), SCALE_WIDTH, ENTRY_WIDTH,
+                                m_width,
+                                MATRIX_MIN, MATRIX_MAX, 1.0, 5.0, 0,
+                                TRUE, 0, 0, NULL, NULL);
+  g_signal_connect (entry, "value_changed",
+                    G_CALLBACK (gimp_double_adjustment_update),
+                    &(m_width));
+  g_signal_connect_swapped (entry, "value_changed",
+                            G_CALLBACK (gimp_preview_invalidate), preview);
+
+  entry = gimp_scale_entry_new (GTK_TABLE (table), 0, 1,
+                                _("Radius"), SCALE_WIDTH, ENTRY_WIDTH,
+                                params->config->radius,
+                                RADIUS_MIN, RADIUS_MAX, 0.1, 0.5, 1,
+                                TRUE, 0, 0, NULL, NULL);
+  g_signal_connect (entry, "value_changed",
+                    G_CALLBACK (gimp_double_adjustment_update),
+                    &(params->config->radius));
+  g_signal_connect_swapped (entry, "value_changed",
+                            G_CALLBACK (gimp_preview_invalidate), preview);
+
+  entry = gimp_scale_entry_new (GTK_TABLE (table), 0, 2,
+                                _("Gauss"), SCALE_WIDTH, ENTRY_WIDTH,
+                                params->config->alpha,
+                                ALPHA_MIN, ALPHA_MAX, 0.1, 0.5, 1,
+                                TRUE, 0, 0, NULL, NULL);
+  g_signal_connect (entry, "value_changed",
+                    G_CALLBACK (gimp_double_adjustment_update),
+                    &(params->config->alpha));
+  g_signal_connect_swapped (entry, "value_changed",
+                            G_CALLBACK (gimp_preview_invalidate), preview);
+
+  entry = gimp_scale_entry_new (GTK_TABLE (table), 0, 3,
+                                _("Correlation"), SCALE_WIDTH, ENTRY_WIDTH,
+                                params->config->gamma,
+                                GAMMA_MIN, GAMMA_MAX, 0.05, 0.1, 2,
+                                TRUE, 0, 0, NULL, NULL);
+  g_signal_connect (entry, "value_changed",
+                    G_CALLBACK (gimp_double_adjustment_update),
+                    &(params->config->gamma));
+  g_signal_connect_swapped (entry, "value_changed",
+                            G_CALLBACK (gimp_preview_invalidate), preview);
+
+  entry = gimp_scale_entry_new (GTK_TABLE (table), 0, 4,
+                                _("Noise"), SCALE_WIDTH, ENTRY_WIDTH,
+                                params->config->noise_factor,
+                                NOISE_FACTOR_MIN, NOISE_FACTOR_MAX, 0.01, 0.1, 2,
+                                TRUE, 0, 0, NULL, NULL);
+  g_signal_connect (entry, "value_changed",
+                    G_CALLBACK (gimp_double_adjustment_update),
+                    &(params->config->noise_factor));
+  g_signal_connect_swapped (entry, "value_changed",
+                            G_CALLBACK (gimp_preview_invalidate), preview);
+  gtk_widget_show (table);
+
+  gtk_widget_show (dialog);
+  run = (gimp_dialog_run (GIMP_DIALOG (dialog)) == GTK_RESPONSE_OK);
+  gtk_widget_destroy (dialog);
+  params->config->mat_width = round(m_width + 0.5);
+  g_free (params->matrix);
+  return run;
 }
 
 static gboolean
@@ -600,30 +482,36 @@ gimp_progress_update_fun (gpointer data, gdouble fraction)
   return (gimp_progress_update (fraction));
 }
 
-
-void
-doit (void)
-{
+static gint doit (ref_params *params) {
   TileSource source;
   TileSink sink;
-  gint width, height;
+  gint x, y, width, height;
   BDClosure update_progress_closure;
+
+#ifdef RF_DEBUG
+  fprintf (stderr, "doing doit()\n");
+#endif
+
+  if (!(gimp_drawable_mask_intersect(params->drawable->drawable_id, &x, &y, &width, &height)))
+    return -1;
 
   bd_closure_init (&update_progress_closure, gimp_progress_update_fun, NULL);
   gimp_progress_init ("Computing matrix");
-  update_matrix ();
+  update_matrix (params);
   gimp_progress_init ("Applying convolution");
-  gimp_drawable_mask_bounds (drawable->drawable_id, &sx1, &sy1, &sx2, &sy2);
-  width = sx2 - sx1;
-  height = sy2 - sy1;
-  tile_source_init_from_drawable (&source, drawable, sx1, sy1, width, height);
-  tile_sink_init_from_drawable (&sink, drawable, sx1, sy1, width, height);
-  convolve_image (&source, &sink, sx1, sy1, width, height,
+  tile_source_init_from_drawable (&source, params->drawable, x, y, width, height);
+  tile_sink_init_from_drawable (&sink, params->drawable, x, y, width, height);
+  convolve_image (&source, &sink, x, y, width, height,
                   TB_BOUNDARY_MIRROR,
-                  matrix, 2 * my_config.mat_width + 1,
+                  params->matrix, 2 * params->config->mat_width + 1,
                   &update_progress_closure);
-  gimp_drawable_flush (drawable);
-  gimp_drawable_merge_shadow (drawable->drawable_id, TRUE);
-  gimp_drawable_update (drawable->drawable_id, sx1, sy1, width, height);
-  g_free (matrix);
+  gimp_drawable_flush (params->drawable);
+  gimp_drawable_merge_shadow (params->drawable->drawable_id, TRUE);
+  gimp_drawable_update (params->drawable->drawable_id, x, y, width, height);
+  g_free (params->matrix);
+  return 0;
+}
+
+static void refocus_help (const gchar *help_id, gpointer help_data) {
+  gimp_message (_(LONG_DESCRIPTION));
 }
