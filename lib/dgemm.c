@@ -13,7 +13,7 @@
     static integer info;
     static logical nota, notb;
     static doublereal temp;
-    static integer i__, j, l, ncola;
+    static integer i__, j, l; //, ncola;
     extern logical lsame_(char *, char *);
     static integer nrowa, nrowb;
     extern /* Subroutine */ int xerbla_(char *, integer *);
@@ -126,10 +126,10 @@
     notb = lsame_(transb, "N");
     if (nota) {
 	nrowa = *m;
-	ncola = *k;
+	//ncola = *k;
     } else {
 	nrowa = *k;
-	ncola = *m;
+	//ncola = *m;
     }
     if (notb) {
 	nrowb = *k;
@@ -162,7 +162,7 @@
 	return 0;
     }
 /*     Quick return if possible. */
-    if (*m == 0 || *n == 0 || (*alpha == 0. || *k == 0) && *beta == 1.) {
+    if (*m == 0 || *n == 0 || (*beta == 1. && (*alpha == 0. || *k == 0))) {
 	return 0;
     }
 /*     And if  alpha.eq.zero. */

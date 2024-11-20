@@ -32,10 +32,10 @@ char *f__r_mode[2] = {"rb", "r"};
 char *f__w_mode[4] = {"wb", "w", "r+b", "r+"};
 #endif
 
- static char f__buf0[400], *f__buf = f__buf0;
- int f__buflen = (int)sizeof(f__buf0);
+static char f__buf0[400], *f__buf = f__buf0;
+int f__buflen = (int)sizeof(f__buf0);
 
- static void
+static void
 #ifdef KR_headers
 f__bufadj(n, c) int n, c;
 #else
@@ -60,9 +60,9 @@ f__bufadj(int n, int c)
 	if (f__buf != f__buf0)
 		free(f__buf);
 	f__buf = nbuf;
-	}
+}
 
- int
+int
 #ifdef KR_headers
 f__putbuf(c) int c;
 #else
@@ -88,11 +88,11 @@ f__putbuf(int c)
 		if (s >= se)
 			break;	/* normally happens the first time */
 		putc(*s++, f__cf);
-		}
-	return 0;
 	}
+	return 0;
+}
 
- void
+void
 #ifdef KR_headers
 x_putc(c)
 #else
@@ -102,11 +102,11 @@ x_putc(int c)
 	if (f__recpos >= f__buflen)
 		f__bufadj(f__recpos, f__buflen);
 	f__buf[f__recpos++] = c;
-	}
+}
 
 #define opnerr(f,m,s) {if(f) errno= m; else opn_err(m,s,a); return(m);}
 
- static void
+static void
 #ifdef KR_headers
 opn_err(m, s, a) int m; char *s; olist *a;
 #else
@@ -118,9 +118,9 @@ opn_err(int m, char *s, olist *a)
 		if (a->ofnmlen >= f__buflen)
 			f__bufadj((int)a->ofnmlen, 0);
 		g_char(a->ofnm, a->ofnmlen, f__curunit->ufnm = f__buf);
-		}
-	f__fatal(m, s);
 	}
+	f__fatal(m, s);
+}
 
 #ifdef KR_headers
 integer f_open(a) olist *a;
@@ -143,8 +143,7 @@ integer f_open(olist *a)
 		f_init();
 	f__curunit = b = &f__units[a->ounit];
 	if(b->ufd) {
-		if(a->ofnm==0)
-		{
+		if(a->ofnm==0) {
 		same:	if (a->oblnk)
 				b->ublnk = *a->oblnk == 'z' || *a->oblnk == 'Z';
 			return(0);
@@ -164,11 +163,11 @@ integer f_open(olist *a)
 		x.cerr=a->oerr;
 		if ((rv = f_clos(&x)) != 0)
 			return rv;
-		}
+	}
 	b->url = (int)a->orl;
 	b->ublnk = a->oblnk && (*a->oblnk == 'z' || *a->oblnk == 'Z');
-	if(a->ofm==0)
-	{	if(b->url>0) b->ufmt=0;
+	if(a->ofm==0) {
+		if(b->url>0) b->ufmt=0;
 		else b->ufmt=1;
 	}
 	else if(*a->ofm=='f' || *a->ofm == 'F') b->ufmt=1;
@@ -182,7 +181,7 @@ integer f_open(olist *a)
 		g_char(a->ofnm,a->ofnmlen,buf);
 		if (!buf[0])
 			opnerr(a->oerr,107,"open")
-		}
+	}
 	else
 		sprintf(buf, "fort.%ld", (long)a->ounit);
 	b->uscrtch = 0;
@@ -190,8 +189,7 @@ integer f_open(olist *a)
 	b->uwrt = 0;
 	b->ufd = 0;
 	b->urw = 3;
-	switch(a->osta ? *a->osta : 'u')
-	{
+	switch(a->osta ? *a->osta : 'u') {
 	case 'o':
 	case 'O':
 #ifdef NON_POSIX_STDIO
@@ -238,7 +236,7 @@ integer f_open(olist *a)
 #ifdef NON_ANSI_STDIO
  replace:
 #endif
-		if (tf = fopen(buf,f__w_mode[0]))
+		if ((tf = fopen(buf,f__w_mode[0])))
 			fclose(tf);
 	}
 
@@ -248,28 +246,30 @@ integer f_open(olist *a)
 	if ((s = a->oacc) && b->url)
 		ufmt = 0;
 	if(!(tf = fopen(buf, f__w_mode[ufmt|2]))) {
-		if (tf = fopen(buf, f__r_mode[ufmt]))
+		if ((tf = fopen(buf, f__r_mode[ufmt])))
 			b->urw = 1;
-		else if (tf = fopen(buf, f__w_mode[ufmt])) {
+		else if ((tf = fopen(buf, f__w_mode[ufmt]))) {
 			b->uwrt = 1;
 			b->urw = 2;
 			}
 		else
 			err(a->oerr, errno, "open");
-		}
+	}
 	b->useek = f__canseek(b->ufd = tf);
 #ifndef NON_UNIX_STDIO
 	if((b->uinode = f__inode(buf,&b->udev)) == -1)
 		opnerr(a->oerr,108,"open")
 #endif
-	if(b->useek)
+	if(b->useek) {
 		if (a->orl)
 			rewind(b->ufd);
 		else if ((s = a->oacc) && (*s == 'a' || *s == 'A')
 			&& fseek(b->ufd, 0L, SEEK_END))
 				opnerr(a->oerr,129,"open");
+	}
 	return(0);
 }
+int
 #ifdef KR_headers
 fk_open(seq,fmt,n) ftnint n;
 #else

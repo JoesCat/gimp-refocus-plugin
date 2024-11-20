@@ -5,7 +5,7 @@
 extern icilist *f__svic;
 extern char *f__icptr;
 
- static int
+static int
 mv_cur(Void)	/* shouldn't use fseek because it insists on calling fflush */
 		/* instead we know too much about stdio */
 {
@@ -53,8 +53,7 @@ mv_cur(Void)	/* shouldn't use fseek because it insists on calling fflush */
 			f__recpos += cursor;
 		}
 	}
-	else if (cursor < 0)
-	{
+	else if (cursor < 0) {
 		if(cursor + f__recpos < 0)
 			err(f__elist->cierr,110,"left off");
 		if(f__hiwater < f__recpos)
@@ -64,7 +63,7 @@ mv_cur(Void)	/* shouldn't use fseek because it insists on calling fflush */
 	return(0);
 }
 
- static int
+static int
 #ifdef KR_headers
 wrt_Z(n,w,minlen,len) Uint *n; int w, minlen; ftnlen len;
 #else
@@ -82,11 +81,11 @@ wrt_Z(Uint *n, int w, int minlen, ftnlen len)
 		se = s;
 		s += len;
 		i = -1;
-		}
+	}
 	else {
 		se = s + len;
 		i = 1;
-		}
+	}
 	for(;; s += i)
 		if (s == se || *s)
 			break;
@@ -108,18 +107,18 @@ wrt_Z(Uint *n, int w, int minlen, ftnlen len)
 			if (s == se)
 				return 0;
 			s += i;
-			}
+		}
 		for(;; s += i) {
 			(*f__putn)(hex[*s >> 4 & 0xf]);
 			(*f__putn)(hex[*s & 0xf]);
 			if (s == se)
 				break;
-			}
 		}
-	return 0;
 	}
+	return 0;
+}
 
- static int
+static int
 #ifdef KR_headers
 wrt_I(n,w,len, base) Uint *n; ftnlen len; register int base;
 #else
@@ -139,15 +138,16 @@ wrt_I(Uint *n, int w, ftnlen len, register int base)
 	if(sign || f__cplus) spare--;
 	if(spare<0)
 		for(i=0;i<w;i++) (*f__putn)('*');
-	else
-	{	for(i=0;i<spare;i++) (*f__putn)(' ');
+	else {
+		for(i=0;i<spare;i++) (*f__putn)(' ');
 		if(sign) (*f__putn)('-');
 		else if(f__cplus) (*f__putn)('+');
 		for(i=0;i<ndigit;i++) (*f__putn)(*ans++);
 	}
 	return(0);
 }
- static int
+
+static int
 #ifdef KR_headers
 wrt_IM(n,w,m,len,base) Uint *n; ftnlen len; int base;
 #else
@@ -165,12 +165,12 @@ wrt_IM(Uint *n, int w, int m, ftnlen len, int base)
 	ans=f__icvt(x,&ndigit,&sign, base);
 	if(sign || f__cplus) xsign=1;
 	else xsign=0;
-	if(ndigit+xsign>w || m+xsign>w)
-	{	for(i=0;i<w;i++) (*f__putn)('*');
+	if(ndigit+xsign>w || m+xsign>w) {
+		for(i=0;i<w;i++) (*f__putn)('*');
 		return(0);
 	}
-	if(x==0 && m==0)
-	{	for(i=0;i<w;i++) (*f__putn)(' ');
+	if(x==0 && m==0) {
+		for(i=0;i<w;i++) (*f__putn)(' ');
 		return(0);
 	}
 	if(ndigit>=m)
@@ -184,7 +184,8 @@ wrt_IM(Uint *n, int w, int m, ftnlen len, int base)
 	for(i=0;i<ndigit;i++) (*f__putn)(*ans++);
 	return(0);
 }
- static int
+
+static int
 #ifdef KR_headers
 wrt_AP(s) char *s;
 #else
@@ -196,14 +197,15 @@ wrt_AP(char *s)
 	if(f__cursor && (i = mv_cur()))
 		return i;
 	quote = *s++;
-	for(;*s;s++)
-	{	if(*s!=quote) (*f__putn)(*s);
+	for(;*s;s++) {
+		if(*s!=quote) (*f__putn)(*s);
 		else if(*++s==quote) (*f__putn)(*s);
 		else return(1);
 	}
 	return(1);
 }
- static int
+
+static int
 #ifdef KR_headers
 wrt_H(a,s) char *s;
 #else
@@ -217,6 +219,8 @@ wrt_H(int a, char *s)
 	while(a--) (*f__putn)(*s++);
 	return(1);
 }
+
+int
 #ifdef KR_headers
 wrt_L(n,len, sz) Uint *n; ftnlen sz;
 #else
@@ -233,7 +237,8 @@ wrt_L(Uint *n, int len, ftnlen sz)
 	else (*f__putn)('F');
 	return(0);
 }
- static int
+
+static int
 #ifdef KR_headers
 wrt_A(p,len) char *p; ftnlen len;
 #else
@@ -243,15 +248,16 @@ wrt_A(char *p, ftnlen len)
 	while(len-- > 0) (*f__putn)(*p++);
 	return(0);
 }
- static int
+
+static int
 #ifdef KR_headers
 wrt_AW(p,w,len) char * p; ftnlen len;
 #else
 wrt_AW(char * p, int w, ftnlen len)
 #endif
 {
-	while(w>len)
-	{	w--;
+	while(w>len) {
+		w--;
 		(*f__putn)(' ');
 	}
 	while(w-- > 0)
@@ -259,7 +265,7 @@ wrt_AW(char * p, int w, ftnlen len)
 	return(0);
 }
 
- static int
+static int
 #ifdef KR_headers
 wrt_G(p,w,d,e,len) ufloat *p; ftnlen len;
 #else
@@ -274,9 +280,9 @@ wrt_G(ufloat *p, int w, int d, int e, ftnlen len)
 			return(wrt_E(p,w,d,e,len));
 		i = 1;
 		goto have_i;
-		}
-	for(;i<=d;i++,up*=10)
-	{	if(x>=up) continue;
+	}
+	for(;i<=d;i++,up*=10) {
+		if(x>=up) continue;
  have_i:
 		oldscale = f__scale;
 		f__scale = 0;
@@ -289,18 +295,18 @@ wrt_G(ufloat *p, int w, int d, int e, ftnlen len)
 	}
 	return(wrt_E(p,w,d,e,len));
 }
+
 #ifdef KR_headers
 w_ed(p,ptr,len) struct syl *p; char *ptr; ftnlen len;
 #else
-w_ed(struct syl *p, char *ptr, ftnlen len)
+int w_ed(struct syl *p, char *ptr, ftnlen len)
 #endif
 {
 	int i;
 
 	if(f__cursor && (i = mv_cur()))
 		return i;
-	switch(p->op)
-	{
+	switch(p->op) {
 	default:
 		fprintf(stderr,"w_ed, unexpected code: %d\n", p->op);
 		sig_die(f__fmtbuf, 1);
@@ -335,14 +341,14 @@ w_ed(struct syl *p, char *ptr, ftnlen len)
 		return(wrt_Z((Uint *)ptr,p->p1,p->p2.i[0],len));
 	}
 }
+
 #ifdef KR_headers
 w_ned(p) struct syl *p;
 #else
-w_ned(struct syl *p)
+int w_ned(struct syl *p)
 #endif
 {
-	switch(p->op)
-	{
+	switch(p->op) {
 	default: fprintf(stderr,"w_ned, unexpected code: %d\n", p->op);
 		sig_die(f__fmtbuf, 1);
 	case SLASH:

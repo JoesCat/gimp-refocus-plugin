@@ -4,7 +4,7 @@
 #include "fmt.h"
 extern int f__hiwater;
 
- int
+int
 x_wSL(Void)
 {
 	int n = f__putbuf('\n');
@@ -12,7 +12,7 @@ x_wSL(Void)
 	return(n == 0);
 }
 
- static int
+static int
 xw_end(Void)
 {
 	int n;
@@ -20,29 +20,30 @@ xw_end(Void)
 	if(f__nonl) {
 		f__putbuf(n = 0);
 		fflush(f__cf);
-		}
+	}
 	else
 		n = f__putbuf('\n');
 	f__hiwater = f__recpos = f__cursor = 0;
 	return n;
 }
 
- static int
+static int
 xw_rev(Void)
 {
 	int n = 0;
 	if(f__workdone) {
 		n = f__putbuf('\n');
 		f__workdone = 0;
-		}
+	}
 	f__hiwater = f__recpos = f__cursor = 0;
 	return n;
 }
 
+integer
 #ifdef KR_headers
-integer s_wsfe(a) cilist *a;	/*start*/
+s_wsfe(a) cilist *a;	/*start*/
 #else
-integer s_wsfe(cilist *a)	/*start*/
+s_wsfe(cilist *a)	/*start*/
 #endif
 {	int n;
 	if(!f__init) f_init();
@@ -50,7 +51,7 @@ integer s_wsfe(cilist *a)	/*start*/
 	f__sequential=1;
 	f__formatted=1;
 	f__external=1;
-	if(n=c_sfe(a)) return(n);
+	if((n=c_sfe(a))) return(n);
 	f__elist=a;
 	f__hiwater = f__cursor=f__recpos=0;
 	f__nonl = 0;

@@ -84,7 +84,7 @@ char *F_err[] =
 #ifdef KR_headers
 f__canseek(f) FILE *f; /*SYSDEP*/
 #else
-f__canseek(FILE *f) /*SYSDEP*/
+int f__canseek(FILE *f) /*SYSDEP*/
 #endif
 {
 #ifdef NON_UNIX_STDIO
@@ -119,12 +119,12 @@ f__canseek(FILE *f) /*SYSDEP*/
 			return(1);
 		else
 			return(0);
-		}
+	}
 	if (S_ISCHR(x.st_mode)) {
 		if(isatty(fileno(f)))
 			return(0);
 		return(1);
-		}
+	}
 	if (S_ISBLK(x.st_mode))
 		return(1);
 #else
@@ -135,7 +135,7 @@ f__canseek(FILE *f) /*SYSDEP*/
 #endif
 }
 
- void
+void
 #ifdef KR_headers
 f__fatal(n,s) char *s;
 #else
@@ -143,8 +143,8 @@ f__fatal(int n, char *s)
 #endif
 {
 	if(n<100 && n>=0) perror(s); /*SYSDEP*/
-	else if(n >= (int)MAXERR || n < -1)
-	{	fprintf(stderr,"%s: illegal error number %d\n",s,n);
+	else if(n >= (int)MAXERR || n < -1) {
+		fprintf(stderr,"%s: illegal error number %d\n",s,n);
 	}
 	else if(n == -1) fprintf(stderr,"%s: end of file\n",s);
 	else
@@ -154,7 +154,7 @@ f__fatal(int n, char *s)
 			(int)(f__curunit-f__units));
 		fprintf(stderr, f__curunit->ufnm ? "named %s\n" : "(unnamed)\n",
 			f__curunit->ufnm);
-		}
+	}
 	else
 		fprintf(stderr,"apparent state: internal I/O\n");
 	if (f__fmtbuf)
@@ -165,7 +165,7 @@ f__fatal(int n, char *s)
 	sig_die(" IO", 1);
 }
 /*initialization routine*/
- VOID
+VOID
 f_init(Void)
 {	unit *p;
 
@@ -189,7 +189,7 @@ f_init(Void)
 #ifdef KR_headers
 f__nowreading(x) unit *x;
 #else
-f__nowreading(unit *x)
+int f__nowreading(unit *x)
 #endif
 {
 	long loc;
@@ -209,8 +209,8 @@ f__nowreading(unit *x)
  cantread:
 			errno = 126;
 			return 1;
-			}
 		}
+	}
 	fseek(x->ufd,loc,SEEK_SET);
 	x->urw = urw;
  done:
@@ -220,7 +220,7 @@ f__nowreading(unit *x)
 #ifdef KR_headers
 f__nowwriting(x) unit *x;
 #else
-f__nowwriting(unit *x)
+int f__nowwriting(unit *x)
 #endif
 {
 	long loc;
@@ -237,26 +237,25 @@ f__nowwriting(unit *x)
 				freopen(x->ufnm,f__w_mode[ufmt],x->ufd)))
 			goto cantwrite;
 		x->urw = 2;
-		}
+	}
 	else {
 		loc=ftell(x->ufd);
 		if (!(f__cf = x->ufd =
-			freopen(x->ufnm, f__w_mode[ufmt |= 2], x->ufd)))
-			{
+			freopen(x->ufnm, f__w_mode[ufmt |= 2], x->ufd))) {
 			x->ufd = NULL;
  cantwrite:
 			errno = 127;
 			return(1);
-			}
+		}
 		x->urw = 3;
 		fseek(x->ufd,loc,SEEK_SET);
-		}
+	}
  done:
 	x->uwrt = 1;
 	return 0;
 }
 
- int
+int
 #ifdef KR_headers
 err__fl(f, m, s) int f, m; char *s;
 #else
@@ -268,4 +267,4 @@ err__fl(int f, int m, char *s)
 	if (f__doend)
 		(*f__doend)();
 	return errno = m;
-	}
+}

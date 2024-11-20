@@ -21,7 +21,7 @@ extern flag f__cblank,f__cplus;	/*blanks in I and compulsory plus*/
 static struct syl f__syl[SYLMX];
 int f__parenlvl,f__pc,f__revloc;
 
- static
+static
 #ifdef KR_headers
 char *ap_end(s) char *s;
 #else
@@ -29,8 +29,8 @@ char *ap_end(char *s)
 #endif
 {	char quote;
 	quote= *s++;
-	for(;*s;s++)
-	{	if(*s!=quote) continue;
+	for(;*s;s++) {
+		if(*s!=quote) continue;
 		if(*++s!=quote) return(s);
 	}
 	if(f__elist->cierr) {
@@ -40,15 +40,15 @@ char *ap_end(char *s)
 	f__fatal(100, "bad string");
 	/*NOTREACHED*/ return 0;
 }
- static
+static
 #ifdef KR_headers
 op_gen(a,b,c,d)
 #else
-op_gen(int a, int b, int c, int d)
+int op_gen(int a, int b, int c, int d)
 #endif
 {	struct syl *p= &f__syl[f__pc];
-	if(f__pc>=SYLMX)
-	{	fprintf(stderr,"format too complicated:\n");
+	if(f__pc>=SYLMX) {
+		fprintf(stderr,"format too complicated:\n");
 		sig_die(f__fmtbuf, 1);
 	}
 	p->op=a;
@@ -66,9 +66,9 @@ static char *gt_num(char *s, int *n, int n1)
 #endif
 {	int m=0,f__cnt=0;
 	char c;
-	for(c= *s;;c = *s)
-	{	if(c==' ')
-		{	s++;
+	for(c= *s;;c = *s) {
+		if(c==' ') {
+			s++;
 			continue;
 		}
 		if(c>'9' || c<'0') break;
@@ -80,34 +80,31 @@ static char *gt_num(char *s, int *n, int n1)
 		if (!n1)
 			s = 0;
 		*n=n1;
-		}
+	}
 	else *n=m;
 	return(s);
 }
 
- static
+static char *
 #ifdef KR_headers
-char *f_s(s,curloc) char *s;
+f_s(s,curloc) char *s;
 #else
-char *f_s(char *s, int curloc)
+f_s(char *s, int curloc)
 #endif
 {
 	skip(s);
-	if(*s++!='(')
-	{
+	if(*s++!='(') {
 		return(NULL);
 	}
 	if(f__parenlvl++ ==1) f__revloc=curloc;
-	if(op_gen(RET1,curloc,0,0)<0 ||
-		(s=f_list(s))==NULL)
-	{
+	if(op_gen(RET1,curloc,0,0)<0 || (s=f_list(s))==NULL) {
 		return(NULL);
 	}
 	skip(s);
 	return(s);
 }
 
- static
+static int
 #ifdef KR_headers
 ne_d(s,p) char *s,**p;
 #else
@@ -115,13 +112,11 @@ ne_d(char *s, char **p)
 #endif
 {	int n,x,sign=0;
 	struct syl *sp;
-	switch(*s)
-	{
+	switch(*s) {
 	default:
 		return(0);
 	case ':': (void) op_gen(COLON,0,0,0); break;
-	case '$':
-		(void) op_gen(NONL, 0, 0, 0); break;
+	case '$': (void) op_gen(NONL, 0, 0, 0); break;
 	case 'B':
 	case 'b':
 		if(*++s=='z' || *s == 'Z') (void) op_gen(BZ,0,0,0);
@@ -129,12 +124,12 @@ ne_d(char *s, char **p)
 		break;
 	case 'S':
 	case 's':
-		if(*(s+1)=='s' || *(s+1) == 'S')
-		{	x=SS;
+		if(*(s+1)=='s' || *(s+1) == 'S') {
+			x=SS;
 			s++;
 		}
-		else if(*(s+1)=='p' || *(s+1) == 'P')
-		{	x=SP;
+		else if(*(s+1)=='p' || *(s+1) == 'P') {
+			x=SP;
 			s++;
 		}
 		else x=S;
@@ -148,9 +143,8 @@ ne_d(char *s, char **p)
 		if (!(s=gt_num(s,&n,0))) {
  bad:			*p = 0;
 			return 1;
-			}
-		switch(*s)
-		{
+		}
+		switch(*s) {
 		default:
 			return(0);
 		case 'P':
@@ -175,12 +169,12 @@ ne_d(char *s, char **p)
 		return(1);
 	case 'T':
 	case 't':
-		if(*(s+1)=='l' || *(s+1) == 'L')
-		{	x=TL;
+		if(*(s+1)=='l' || *(s+1) == 'L') {
+			x=TL;
 			s++;
 		}
-		else if(*(s+1)=='r'|| *(s+1) == 'R')
-		{	x=TR;
+		else if(*(s+1)=='r'|| *(s+1) == 'R') {
+			x=TR;
 			s++;
 		}
 		else x=T;
@@ -199,7 +193,7 @@ ne_d(char *s, char **p)
 	return(1);
 }
 
- static
+static int
 #ifdef KR_headers
 e_d(s,p) char *s,**p;
 #else
@@ -209,8 +203,7 @@ e_d(char *s, char **p)
 	char *sv=s;
 	s=gt_num(s,&n,1);
 	(void) op_gen(STACK,n,0,0);
-	switch(*s++)
-	{
+	switch(*s++) 	{
 	default: break;
 	case 'E':
 	case 'e':	x=1;
@@ -221,12 +214,12 @@ e_d(char *s, char **p)
  bad:
 			*p = 0;
 			return 1;
-			}
+		}
 		if(w==0) break;
 		if(*s=='.') {
 			if (!(s=gt_num(s+1,&d,0)))
 				goto bad;
-			}
+		}
 		else d=0;
 		if(*s!='E' && *s != 'e')
 			(void) op_gen(x==1?E:G,w,d,0);	/* default is Ew.dE2 */
@@ -234,7 +227,7 @@ e_d(char *s, char **p)
 			if (!(s=gt_num(s+1,&e,0)))
 				goto bad;
 			(void) op_gen(x==1?EE:GE,w,d,e);
-			}
+		}
 		break;
 	case 'O':
 	case 'o':
@@ -258,8 +251,8 @@ e_d(char *s, char **p)
 	case 'a':
 		found=1;
 		skip(s);
-		if(*s>='0' && *s<='9')
-		{	s=gt_num(s,&w,1);
+		if(*s>='0' && *s<='9') {
+			s=gt_num(s,&w,1);
 			if(w==0) break;
 			(void) op_gen(AW,w,0,0);
 			break;
@@ -275,7 +268,7 @@ e_d(char *s, char **p)
 		if(*s=='.') {
 			if (!(s=gt_num(s+1,&d,0)))
 				goto bad;
-			}
+		}
 		else d=0;
 		(void) op_gen(F,w,d,0);
 		break;
@@ -288,7 +281,7 @@ e_d(char *s, char **p)
 		if(*s=='.') {
 			if (!(s=gt_num(s+1,&d,0)))
 				goto bad;
-			}
+		}
 		else d=0;
 		(void) op_gen(D,w,d,0);
 		break;
@@ -301,8 +294,8 @@ e_d(char *s, char **p)
 			goto bad;
 		found=1;
 		if(w==0) break;
-		if(*s!='.')
-		{	(void) op_gen(i,w,0,0);
+		if(*s!='.') {
+			(void) op_gen(i,w,0,0);
 			break;
 		}
 		if (!(s=gt_num(s+1,&d,0)))
@@ -310,15 +303,16 @@ e_d(char *s, char **p)
 		(void) op_gen(im,w,d,0);
 		break;
 	}
-	if(found==0)
-	{	f__pc--; /*unSTACK*/
+	if(found==0) {
+		f__pc--; /*unSTACK*/
 		*p=sv;
 		return(0);
 	}
 	*p=s;
 	return(1);
 }
- static
+ 
+static
 #ifdef KR_headers
 char *i_tem(s) char *s;
 #else
@@ -334,21 +328,20 @@ char *i_tem(char *s)
 	return(f_s(s,curloc));
 }
 
- static
+static
 #ifdef KR_headers
 char *f_list(s) char *s;
 #else
 char *f_list(char *s)
 #endif
 {
-	for(;*s!=0;)
-	{	skip(s);
+	for(;*s!=0;) {
+		skip(s);
 		if((s=i_tem(s))==NULL) return(NULL);
 		skip(s);
 		if(*s==',') s++;
-		else if(*s==')')
-		{	if(--f__parenlvl==0)
-			{
+		else if(*s==')') {
+			if(--f__parenlvl==0) {
 				(void) op_gen(REVERT,f__revloc,0,0);
 				return(++s);
 			}
@@ -362,12 +355,11 @@ char *f_list(char *s)
 #ifdef KR_headers
 pars_f(s) char *s;
 #else
-pars_f(char *s)
+int pars_f(char *s)
 #endif
 {
 	f__parenlvl=f__revloc=f__pc=0;
-	if(f_s(s,0) == NULL)
-	{
+	if(f_s(s,0) == NULL) {
 		return(-1);
 	}
 	return(0);
@@ -376,15 +368,14 @@ pars_f(char *s)
 int f__cnt[STKSZ],f__ret[STKSZ],f__cp,f__rp;
 flag f__workdone, f__nonl;
 
- static
+static
 #ifdef KR_headers
 type_f(n)
 #else
-type_f(int n)
+int type_f(int n)
 #endif
 {
-	switch(n)
-	{
+	switch(n) {
 	default:
 		return(n);
 	case RET1:
@@ -409,31 +400,31 @@ type_f(int n)
 		return(ED);
 	}
 }
+
+integer
 #ifdef KR_headers
-integer do_fio(number,ptr,len) ftnint *number; ftnlen len; char *ptr;
+do_fio(number,ptr,len) ftnint *number; ftnlen len; char *ptr;
 #else
-integer do_fio(ftnint *number, char *ptr, ftnlen len)
+do_fio(ftnint *number, char *ptr, ftnlen len)
 #endif
 {	struct syl *p;
 	int n,i;
-	for(i=0;i<*number;i++,ptr+=len)
-	{
-loop:	switch(type_f((p= &f__syl[f__pc])->op))
-	{
+	for(i=0;i<*number;i++,ptr+=len) {
+loop:	switch(type_f((p= &f__syl[f__pc])->op)) {
 	default:
 		fprintf(stderr,"unknown code in do_fio: %d\n%s\n",
 			p->op,f__fmtbuf);
 		err(f__elist->cierr,100,"do_fio");
 	case NED:
-		if((*f__doned)(p))
-		{	f__pc++;
+		if((*f__doned)(p)) {
+			f__pc++;
 			goto loop;
 		}
 		f__pc++;
 		continue;
 	case ED:
-		if(f__cnt[f__cp]<=0)
-		{	f__cp--;
+		if(f__cnt[f__cp]<=0) {
+			f__cp--;
 			f__pc++;
 			goto loop;
 		}
@@ -455,8 +446,8 @@ loop:	switch(type_f((p= &f__syl[f__pc])->op))
 		f__pc++;
 		goto loop;
 	case GOTO:
-		if(--f__cnt[f__cp]<=0)
-		{	f__cp--;
+		if(--f__cnt[f__cp]<=0) {
+			f__cp--;
 			f__rp--;
 			f__pc++;
 			goto loop;
@@ -504,11 +495,14 @@ loop:	switch(type_f((p= &f__syl[f__pc])->op))
 	}
 	return(0);
 }
+
+int
 en_fio(Void)
 {	ftnint one=1;
 	return(do_fio(&one,(char *)NULL,(ftnint)0));
 }
- VOID
+
+VOID
 fmt_bg(Void)
 {
 	f__workdone=f__cp=f__rp=f__pc=f__cursor=0;

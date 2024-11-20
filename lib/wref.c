@@ -15,6 +15,7 @@
 #include "ctype.h"
 #endif
 
+int
 #ifdef KR_headers
 wrt_E(p,w,d,e,len) ufloat *p; ftnlen len;
 #else
@@ -36,7 +37,7 @@ wrt_E(ufloat *p, int w, int d, int e, ftnlen len)
 	if(f__scale) {
 		if(f__scale >= d + 2 || f__scale <= -d)
 			goto nogood;
-		}
+	}
 	if(f__scale <= 0)
 		--d;
 	if (len == sizeof(real))
@@ -46,7 +47,7 @@ wrt_E(ufloat *p, int w, int d, int e, ftnlen len)
 	if (dd < 0.) {
 		signspace = sign = 1;
 		dd = -dd;
-		}
+	}
 	else {
 		sign = 0;
 		signspace = (int)f__cplus;
@@ -54,14 +55,14 @@ wrt_E(ufloat *p, int w, int d, int e, ftnlen len)
 		if (!dd)
 			dd = 0.;	/* avoid -0 */
 #endif
-		}
+	}
 	delta = w - (2 /* for the . and the d adjustment above */
 			+ 2 /* for the E+ */ + signspace + d + e);
 #ifdef WANT_LEAD_0
 	if (f__scale <= 0 && delta > 0) {
 		delta--;
 		insert0 = 1;
-		}
+	}
 	else
 #endif
 	if (delta < 0) {
@@ -69,13 +70,13 @@ nogood:
 		while(--w >= 0)
 			PUT('*');
 		return(0);
-		}
+	}
 	if (f__scale < 0)
 		d += f__scale;
 	if (d > FMAX) {
 		d1 = d - FMAX;
 		d = FMAX;
-		}
+	}
 	else
 		d1 = 0;
 	sprintf(buf,"%#.*E", d, dd);
@@ -86,7 +87,7 @@ nogood:
 			case 'n':
 			case 'N':
 				signspace = 0;	/* no sign for NaNs */
-			}
+		}
 		delta = w - strlen(buf) - signspace;
 		if (delta < 0)
 			goto nogood;
@@ -97,7 +98,7 @@ nogood:
 		for(s = buf; *s; s++)
 			PUT(*s);
 		return 0;
-		}
+	}
 #endif
 	se = buf + d + 3;
 #ifdef GOOD_SPRINTF_EXPONENT /* When possible, exponent has 2 digits. */
@@ -113,7 +114,7 @@ nogood:
 	if (e < 2) {
 		if (*s != '0')
 			goto nogood;
-		}
+	}
 #ifndef VAX
 	/* accommodate 3 significant digits in exponent */
 	if (s[2]) {
@@ -128,20 +129,20 @@ nogood:
 	/* exponent field if it fits.	*/
 #else
 		if (!e0) {
-			for(s -= 2, e1 = 2; s[0] = s[1]; s++)
+			for(s -= 2, e1 = 2; (s[0] = s[1]); s++)
 #ifdef CRAY
 				delta--;
 			if ((delta += 4) < 0)
 				goto nogood
 #endif
-				;
-			}
+			;
+		}
 #endif
 		else if (e0 >= 0)
 			goto shift;
 		else
 			e1 = e;
-		}
+	}
 	else
  shift:
 #endif
@@ -164,20 +165,20 @@ nogood:
 			PUT('0');
 		PUT(*s);
 		s += 2;
-		}
+	}
 	else if (f__scale > 1) {
 		PUT(*s);
 		s += 2;
 		while(--i > 0)
 			PUT(*s++);
 		PUT('.');
-		}
+	}
 	if (d1) {
 		se -= 2;
 		while(s < se) PUT(*s++);
 		se += 2;
 		do PUT('0'); while(--d1 > 0);
-		}
+	}
 	while(s < se)
 		PUT(*s++);
 	if (e < 2)
@@ -187,10 +188,11 @@ nogood:
 			PUT('0');
 		while(*s)
 			PUT(*s++);
-		}
-	return 0;
 	}
+	return 0;
+}
 
+int
 #ifdef KR_headers
 wrt_F(p,w,d,len) ufloat *p; ftnlen len;
 #else
@@ -207,7 +209,7 @@ wrt_F(ufloat *p, int w, int d, ftnlen len)
 	else {
 		d1 = d - MAXFRACDIGS;
 		d = MAXFRACDIGS;
-		}
+	}
 	if (x < 0.)
 		{ x = -x; sign = 1; }
 	else {
@@ -216,14 +218,14 @@ wrt_F(ufloat *p, int w, int d, ftnlen len)
 		if (!x)
 			x = 0.;
 #endif
-		}
+	}
 
-	if (n = f__scale)
+	if ((n = f__scale)) {
 		if (n > 0)
 			do x *= 10.; while(--n > 0);
 		else
 			do x *= 0.1; while(++n < 0);
-
+	}
 #ifdef USE_STRLEN
 	sprintf(b = buf, "%#.*f", d, x);
 	n = strlen(b) + d1;
@@ -246,8 +248,8 @@ wrt_F(ufloat *p, int w, int d, ftnlen len)
 					sign = 0;
 				}
 			break;
-			}
 		}
+	}
 	if (sign || f__cplus)
 		++n;
 	if (n > w) {
@@ -260,17 +262,17 @@ wrt_F(ufloat *p, int w, int d, ftnlen len)
 			while(--w >= 0)
 				PUT('*');
 			return 0;
-			}
 		}
+	}
 	for(w -= n; --w >= 0; )
 		PUT(' ');
 	if (sign)
 		PUT('-');
 	else if (f__cplus)
 		PUT('+');
-	while(n = *b++)
+	while((n = *b++))
 		PUT(n);
 	while(--d1 >= 0)
 		PUT('0');
 	return 0;
-	}
+}

@@ -22,15 +22,12 @@ logical lsame_(char *ca, char *cb)
             CA and CB specify the single characters to be compared.   
 
    ===================================================================== 
-  
-
-
        Test if the characters are equal */
+
     /* System generated locals */
     logical ret_val;
     /* Local variables */
     static integer inta, intb, zcode;
-
 
     ret_val = *(unsigned char *)ca == *(unsigned char *)cb;
     if (ret_val) {
@@ -51,9 +48,8 @@ logical lsame_(char *ca, char *cb)
 
     if (zcode == 90 || zcode == 122) {
 
-/*        ASCII is assumed - ZCODE is the ASCII code of either lower o
-r   
-          upper case 'Z'. */
+/*     ASCII is assumed - ZCODE is the ASCII code of either lower or   
+       upper case 'Z'. */
 
 	if (inta >= 97 && inta <= 122) {
 	    inta += -32;
@@ -64,24 +60,22 @@ r
 
     } else if (zcode == 233 || zcode == 169) {
 
-/*        EBCDIC is assumed - ZCODE is the EBCDIC code of either lower
- or   
-          upper case 'Z'. */
+/*     EBCDIC is assumed - ZCODE is the EBCDIC code of either lower
+       or upper case 'Z'. */
 
-	if (inta >= 129 && inta <= 137 || inta >= 145 && inta <= 153 || inta 
-		>= 162 && inta <= 169) {
+	if ((inta >= 129 && inta <= 137) || (inta >= 145 && inta <= 153) ||
+	    (inta >= 162 && inta <= 169)) {
 	    inta += 64;
 	}
-	if (intb >= 129 && intb <= 137 || intb >= 145 && intb <= 153 || intb 
-		>= 162 && intb <= 169) {
+	if ((intb >= 129 && intb <= 137) || (intb >= 145 && intb <= 153) ||
+	    (intb >= 162 && intb <= 169)) {
 	    intb += 64;
 	}
 
     } else if (zcode == 218 || zcode == 250) {
 
-/*        ASCII is assumed, on Prime machines - ZCODE is the ASCII cod
-e   
-          plus 128 of either lower or upper case 'Z'. */
+/*     ASCII is assumed, on Prime machines - ZCODE is the ASCII code   
+       plus 128 of either lower or upper case 'Z'. */
 
 	if (inta >= 225 && inta <= 250) {
 	    inta += -32;
@@ -98,4 +92,3 @@ e
 
     return ret_val;
 } /* lsame_ */
-

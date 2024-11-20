@@ -14,10 +14,11 @@ extern FILE *tmpfile();
 
 extern char *f__r_mode[], *f__w_mode[];
 
+integer
 #ifdef KR_headers
-integer f_end(a) alist *a;
+f_end(a) alist *a;
 #else
-integer f_end(alist *a)
+f_end(alist *a)
 #endif
 {
 	unit *b;
@@ -28,15 +29,15 @@ integer f_end(alist *a)
 	if(b->ufd==NULL) {
 		char nbuf[10];
 		sprintf(nbuf,"fort.%ld",a->aunit);
-		if (tf = fopen(nbuf, f__w_mode[0]))
+		if ((tf = fopen(nbuf, f__w_mode[0])))
 			fclose(tf);
 		return(0);
-		}
+	}
 	b->uend=1;
 	return(b->useek ? t_runc(a) : 0);
 }
 
- static int
+static int
 #ifdef KR_headers
 copy(from, len, to) FILE *from, *to; register long len;
 #else
@@ -51,11 +52,11 @@ copy(FILE *from, register long len, FILE *to)
 			return 1;
 		if ((len -= len1) <= 0)
 			break;
-		}
-	return 0;
 	}
+	return 0;
+}
 
- int
+int
 #ifdef KR_headers
 t_runc(a) alist *a;
 #else
@@ -82,20 +83,20 @@ t_runc(alist *a)
 		if (b->uwrt)
 			b->uwrt = 1;
 		goto done;
-		}
-	if (!(bf = fopen(b->ufnm, f__r_mode[0]))
-	 || !(tf = tmpfile())) {
+	}
+	if (!(bf = fopen(b->ufnm, f__r_mode[0])) ||
+	    !(tf = tmpfile())) {
 #ifdef NON_UNIX_STDIO
  bad:
 #endif
 		rc = 1;
 		goto done;
-		}
+	}
 	if (copy(bf, loc, tf)) {
  bad1:
 		rc = 1;
 		goto done1;
-		}
+	}
 	if (!(bf = freopen(b->ufnm, f__w_mode[0], bf)))
 		goto bad1;
 	rewind(tf);
@@ -109,7 +110,7 @@ t_runc(alist *a)
 			goto bad;
 		fseek(bf,0L,SEEK_END);
 		b->urw = 3;
-		}
+	}
 #endif
 done1:
 	fclose(tf);
@@ -118,4 +119,4 @@ done:
 	if (rc)
 		err(a->aerr,111,"endfile");
 	return 0;
-	}
+}
