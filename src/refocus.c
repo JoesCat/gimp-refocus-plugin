@@ -48,7 +48,7 @@
 #define SCALE_WIDTH	  150
 #define ENTRY_WIDTH	  4
 
-#define MATRIX_MIN	  0.0
+#define MATRIX_MIN	  1.0
 #define MATRIX_MAX	  25.0
 #define MATRIX_STEP	  1.0
 #define RADIUS_MIN	  0.0
@@ -86,6 +86,7 @@ typedef struct {
   config       *config;
   GimpDrawable *drawable;
   CMat         *matrix;
+  gdouble       mat_width_d;
 } ref_params;
 
 /* Declare local functions. */
@@ -252,17 +253,20 @@ static void run (const gchar *name, gint n_params, const GimpParam *param,
   values[0].data.d_status = status;
 }
 
-static void update_matrix (ref_params *params) {
+static int update_matrix (ref_params *params) {
   /* Recompute matrix if needed */
   CMat circle, gaussian, convolution;
 
   if (params->matrix)
     finish_c_mat (params->matrix);
 
-  make_gaussian_convolution (params->config->alpha, &gaussian,
-                             params->config->mat_width);
-  make_circle_convolution (params->config->radius, &circle,
-                           params->config->mat_width);
+  if (!(make_gaussian_convolution (params->config->alpha, &gaussian,
+                             params->config->mat_width)))
+    goto update_matrix_mem_err_gaussian;
+
+  if (!(make_circle_convolution (params->config->radius, &circle,
+                           params->config->mat_width)))
+    goto update_matrix_mem_err_circle;
 #ifdef RF_DEBUG
   fprintf (stderr, "mat_width=%d alpha=%f radius=%f gamma=%f noise=%f\n",
            params->config->mat_width, params->config->alpha,
@@ -275,14 +279,27 @@ static void update_matrix (ref_params *params) {
 #endif
 
   /* TODO: must use normal convolution */
-  init_c_mat (&convolution, params->config->mat_width);
+  if (!(init_c_mat (&convolution, params->config->mat_width)))
+    goto update_matrix_mem_err_convolution;
   convolve_star_mat (&convolution, &gaussian, &circle);
-  params->matrix = compute_g_matrix (&convolution, params->config->mat_width,
+  if (!(params->matrix = compute_g_matrix (&convolution, params->config->mat_width,
                                       params->config->gamma,
-                                      params->config->noise_factor, 0.0, TRUE);
+                                      params->config->noise_factor, 0.0, TRUE)))
+    goto update_matrix_mem_err_matrix;
+
   finish_c_mat (&convolution);
   finish_c_mat (&gaussian);
   finish_c_mat (&circle);
+  return (1);
+
+update_matrix_mem_err_matrix:
+  finish_c_mat (&convolution);
+update_matrix_mem_err_convolution:
+  finish_c_mat (&circle);
+update_matrix_mem_err_circle:
+  finish_c_mat (&gaussian);
+update_matrix_mem_err_gaussian:
+  return (0);
 }
 
 /* Checks that the configuration is valid for the image type */
@@ -314,7 +331,7 @@ static int check_config_values (config *my_config, gboolean reset) {
         my_config->noise_factor < NOISE_FACTOR_MIN ||
         my_config->noise_factor > NOISE_FACTOR_MAX) {
       g_message("Bad input parameter!");
-      return 1;
+      return (1);
     }
   }
 #ifdef RF_DEBUG
@@ -323,7 +340,7 @@ static int check_config_values (config *my_config, gboolean reset) {
            my_config->mat_width, my_config->radius, my_config->alpha,
            my_config->gamma, my_config->noise_factor);
 #endif
-  return 0;
+  return (0);
 }
 
 gboolean preview_progress_update_fun (const gpointer data, gdouble arg) {
@@ -352,7 +369,8 @@ static void preview_callback (GtkWidget * widget, ref_params *params) {
   format = gimp_drawable_get_format (preview_ID);
   bppImg = babl_format_get_bytes_per_pixel(format);
 
-  update_matrix (params);
+  params->config->mat_width = round(params->mat_width_d);
+  if (!(update_matrix (params))) return;
   tile_source_init_from_drawable (&source, params->drawable, image_x, image_y,
                                   im_width, im_height);
   tile_sink_init_for_preview (&sink, params->drawable, image_x, image_y,
@@ -381,10 +399,9 @@ static gint refocus_dialog (ref_params *params) {
   GtkWidget *table;
   GtkWidget *preview;
   GtkObject *entry;
-  gdouble    m_width;
   gboolean  run;
 
-  m_width = params->config->mat_width;
+  params->mat_width_d = params->config->mat_width;
 
   dialog = gimp_dialog_new (_("Refocus"), "refocus", NULL, 0,
                             refocus_help, PROCEDURE_NAME,
@@ -414,12 +431,12 @@ static gint refocus_dialog (ref_params *params) {
 
   entry = gimp_scale_entry_new (GTK_TABLE (table), 0, 0,
                                 _("Matrix Size"), SCALE_WIDTH, ENTRY_WIDTH,
-                                m_width,
+                                params->mat_width_d,
                                 MATRIX_MIN, MATRIX_MAX, 1.0, 5.0, 0,
                                 TRUE, 0, 0, NULL, NULL);
   g_signal_connect (entry, "value_changed",
                     G_CALLBACK (gimp_double_adjustment_update),
-                    &(m_width));
+                    &(params->mat_width_d));
   g_signal_connect_swapped (entry, "value_changed",
                             G_CALLBACK (gimp_preview_invalidate), preview);
 
@@ -471,7 +488,6 @@ static gint refocus_dialog (ref_params *params) {
   gtk_widget_show (dialog);
   run = (gimp_dialog_run (GIMP_DIALOG (dialog)) == GTK_RESPONSE_OK);
   gtk_widget_destroy (dialog);
-  params->config->mat_width = round(m_width + 0.5);
   g_free (params->matrix);
   return run;
 }
@@ -493,11 +509,12 @@ static gint doit (ref_params *params) {
 #endif
 
   if (!(gimp_drawable_mask_intersect(params->drawable->drawable_id, &x, &y, &width, &height)))
-    return -1;
+    return (-1);
 
   bd_closure_init (&update_progress_closure, gimp_progress_update_fun, NULL);
   gimp_progress_init ("Computing matrix");
-  update_matrix (params);
+  if (!(update_matrix (params)))
+    return (-1);
   gimp_progress_init ("Applying convolution");
   tile_source_init_from_drawable (&source, params->drawable, x, y, width, height);
   tile_sink_init_from_drawable (&sink, params->drawable, x, y, width, height);
@@ -509,7 +526,7 @@ static gint doit (ref_params *params) {
   gimp_drawable_merge_shadow (params->drawable->drawable_id, TRUE);
   gimp_drawable_update (params->drawable->drawable_id, x, y, width, height);
   g_free (params->matrix);
-  return 0;
+  return (0);
 }
 
 static void refocus_help (const gchar *help_id, gpointer help_data) {
