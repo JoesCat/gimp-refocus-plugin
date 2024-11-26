@@ -18,12 +18,6 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#if __has_include("refocus-config.h")
-#include "refocus-config.h"
-#else
-#define PLUGIN_VERSION "refocus is local"
-#endif
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
@@ -33,12 +27,12 @@
 #include <sys/types.h>
 #include <signal.h>
 #include <unistd.h>
+#include "util.h"
 #include "refocus.h"
 #include "prevman.h"
 #include "matrix.h"
 #include "conv.h"
 #include "bdclosure.h"
-#include "util.h"
 
 /* No i18n for now */
 #define _(x)	x
@@ -85,6 +79,10 @@ typedef struct {
 typedef struct {
   config       *config;
   GimpDrawable *drawable;
+  gint          rgb;
+  gint          bpp;
+  gint          bpc;
+  const Babl   *format;
   CMat         *matrix;
   gdouble       mat_width_d;
 } ref_params;
@@ -95,6 +93,7 @@ static void run (const gchar *name,
                  gint nparams,
                  const GimpParam *param,
                  gint *nreturn_vals, GimpParam **return_vals);
+static int color_size (const Babl *format, gint is_rgb);
 static gboolean refocus_dialog (ref_params *params);
 static gint doit (ref_params *params);
 static int  check_config_values (config *my_config, gboolean reset);
@@ -184,12 +183,24 @@ static void run (const gchar *name, gint n_params, const GimpParam *param,
   my_params.drawable = drawable = gimp_drawable_get (param[2].data.d_drawable);
 
   /* Make sure that the drawable is gray or RGB color */
-  if (!gimp_drawable_is_rgb (drawable->drawable_id) &&
+  if (!(my_params.rgb = gimp_drawable_is_rgb (drawable->drawable_id)) &&
       !gimp_drawable_is_gray (drawable->drawable_id)) {
     g_message("Image is not RGB, RGBA, gray or grayA!");
     status = GIMP_PDB_EXECUTION_ERROR;;
     return;
   }
+
+  gegl_init (NULL, NULL);
+
+  my_params.format = gimp_drawable_get_format (drawable->drawable_id);
+  my_params.bpp    = babl_format_get_bytes_per_pixel (my_params.format);
+  my_params.bpc    = color_size (my_params.format, my_params.rgb);
+#ifdef RF_DEBUG
+  printf("Image size: X=%d Y=%d, ",
+         my_params.drawable->width, my_params.drawable->height);
+  printf("bytes per pixel=%d, bytes per color=%d\n",
+         my_params.bpp, my_params.bpc);
+#endif
 
   /* Although the convolution should work fine with a tiny cache,
      it is made bigger to improve scrolling speed */
@@ -250,7 +261,53 @@ static void run (const gchar *name, gint n_params, const GimpParam *param,
     gimp_drawable_detach (drawable);
   }
 
+  gegl_exit ();
+
   values[0].data.d_status = status;
+}
+
+static int color_size (const Babl *format, gint is_rgb) {
+  int bpp         = babl_format_get_bytes_per_pixel (format);
+  const char *str = babl_get_name (format);
+
+#ifdef RF_DEBUG
+  printf("color_size(), format=<%s>, bytes per pixel=%d\n", str, bpp);
+#endif
+  if (strstr(str, "double") != NULL)
+    return (-8); /* IEEE 754 double precision */
+  if (strstr(str, "float") != NULL)
+    return (-4); /* IEEE 754 single precision */
+  //if (strstr(str, "half") != NULL)
+  //  return (-2); /* IEEE 754 half precision */
+  if (strstr(str, "u15") != NULL)
+    return (-99); /* TODO for another day */
+  if (strstr(str, " u") == NULL)
+    return (-99); /* not unsigned integer size */
+  if (is_rgb) { /* RGB, RGBA */
+    if (bpp > 32)
+      return (-99); /* unknown size */
+    if (bpp >= 24)
+      return (8);
+    if (bpp >= 12)
+      return (4);
+    if (bpp >= 6)
+      return (2);
+    if (bpp >= 3)
+      return (1);
+  } else { /* gray, grayA */
+    if (bpp > 16)
+      return (-99); /* unknown size */
+    if (bpp >= 8)
+      return (8);
+    if (bpp >= 4)
+      return (4);
+    if (bpp >= 2)
+      return (2);
+    return (1);
+  }
+
+  /* probably RGB in 1 byte, TODO for another day */
+  return (-99);
 }
 
 static int update_matrix (ref_params *params) {
@@ -351,8 +408,7 @@ static void preview_callback (GtkWidget * widget, ref_params *params) {
   GimpDrawablePreview *preview;
   GimpPreview *ptr;
   gint32       preview_ID;
-  gint         image_x, image_y, im_width, im_height, bppImg;
-  const Babl  *format;
+  gint         image_x, image_y, im_width, im_height;
   TileSource   source;
   TileSink     sink;
   gint         row;
@@ -366,8 +422,6 @@ static void preview_callback (GtkWidget * widget, ref_params *params) {
   gimp_preview_get_size (ptr, &im_width, &im_height);
 
   preview_ID = gimp_drawable_preview_get_drawable_id (preview);
-  format = gimp_drawable_get_format (preview_ID);
-  bppImg = babl_format_get_bytes_per_pixel(format);
 
   params->config->mat_width = round(params->mat_width_d);
   if (!(update_matrix (params))) return;
@@ -383,12 +437,12 @@ static void preview_callback (GtkWidget * widget, ref_params *params) {
                   TB_BOUNDARY_MIRROR,
                   params->matrix, 2 * params->config->mat_width + 1,
                   &update_progress_closure);
-  buf = g_new (guchar, im_height * im_width * bppImg);
+  buf = g_new (guchar, im_height * im_width * params->bpp);
   for (row = 0; event_is_current && (row < im_height); row++) {
-    tile_sink_get_row (&sink, &buf[row * im_width * bppImg],
+    tile_sink_get_row (&sink, &buf[row * im_width * params->bpp],
                        image_x, image_y + row, im_width);
   };
-  gimp_preview_draw_buffer (ptr, buf, im_width * bppImg);
+  gimp_preview_draw_buffer (ptr, buf, im_width * params->bpp);
   g_free (buf);
   tile_sink_free_buffers (&sink);
 }

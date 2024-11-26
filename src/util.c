@@ -1,9 +1,12 @@
 /* Refocus plug-in
- * Copyright (C) 1999-2003 Ernst Lippe
- * 
- * This program is free software; you can redistribute it and/or modify
+ * Copyright (C) 1999-2004... Ernst Lippe - (original author)
+ * Copyright (C) 2024 Jose Da Silva (updates and improvements)
+ *
+ * Based on the Convolution Matrix plug-in by Lauri Alanko <la@iki.fi>
+ *
+ * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -12,21 +15,14 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
- *
- * Version $Id: util.c,v 1.1.1.1 2003/01/30 21:30:19 ernstl Exp $
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <stdio.h>
-#include "util.h"
 #include <string.h>
-#include <math.h>
 #include <libgimp/gimp.h>
-
-#ifndef lint
-static char vcid[] GCC_UNUSED = "$Id: util.c,v 1.1.1.1 2003/01/30 21:30:19 ernstl Exp $";
-#endif /* lint */
+#include <libgimp/gimpui.h>
+#include "util.h"
 
 gint
 floorm (gint a, gint b)
@@ -119,4 +115,82 @@ gint
 tile_height (void)
 {
   return (gimp_tile_height ());
+}
+
+/**
+ * get_pixel:
+ * @ptr: pointer to pixel_color value in source image.
+ * @bpc: color value type as defined from refocus.c:run().
+ * This function gets a color pixel from the source image
+ * and returns a converted double[0.0..1.0] value.
+ **/
+gdouble
+get_pixel (guchar *ptr, gint bpc)
+{
+  /* Returned value is in the range of [0.0..1.0]. */
+  gdouble ret = 0.0;
+  if (bpc == 1) {
+    ret += *ptr;
+    ret /= 255;
+  } else if (bpc == 2) {
+    uint16_t *p = (uint16_t *)(ptr);
+    ret += *p;
+    ret /= 65535;
+   } else if (bpc == 4) {
+    uint32_t *p = (uint32_t *)(ptr);
+    ret += *p;
+    ret /= 4294967295;
+  } else if (bpc == 8) {
+    uint64_t *p = (uint64_t *)(ptr);
+    long double lret = 0.0;
+    lret += *p;
+    lret /= 18446744073709551615UL;
+    ret = lret;
+  } else if (bpc == -8) {
+    double *p = (double *)(ptr);
+    ret += *p;
+  } else if (bpc == -4) {
+    float *p = (float *)(ptr);
+    ret += *p;
+//} else if (bpc == -2) {
+//  half *p = ptr;
+//  ret += *p;
+  }
+  return ret;
+}
+
+/**
+ * set_pixel:
+ * @dest: pointer to destination image to set color pixel.
+ * @d: input pixel_color value in range [0.0..1.0].
+ * @bpc: color value type as defined from refocus.c:run().
+ * This function sets a color pixel in destination image.
+ * The input value is a double in the range [0.0..1.0].
+ **/
+void
+set_pixel (guchar *dest, gdouble d, gint bpc)
+{
+  /* input value is in the range of [0.0..1.0]. */
+  if (bpc == 1) {
+    *dest = round (d * 255);
+  }  else if (bpc == 2) {
+    uint16_t *p = (uint16_t *)(dest);
+    *p = round (d * 65535);
+  } else if (bpc == 4) {
+    uint32_t *p = (uint32_t *)(dest);
+    *p = round (d * 4294967295);
+  } else if (bpc == 8) {
+    uint64_t *p = (uint64_t *)(dest);
+    *p = roundl (d * 18446744073709551615UL);
+  } else if (bpc == -8) {
+    double *p = (double *)(dest);
+    *p = d;
+  } else if (bpc == -4) {
+    float *p = (float *)(dest);
+    *p = (float)(d);
+//} else if (bpc == -2) {
+//  half *p = (half *)(dest);
+//  *p = d;
+  }
+  return;
 }

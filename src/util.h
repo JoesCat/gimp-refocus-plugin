@@ -1,9 +1,11 @@
 /* Refocus plug-in
- * Copyright (C) 1999-2003 Ernst Lippe
- * 
- * This program is free software; you can redistribute it and/or modify
+ * Copyright (C) 1999-2004... Ernst Lippe
+ *
+ * Based on the Convolution Matrix plug-in by Lauri Alanko <la@iki.fi>
+ *
+ * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -12,18 +14,19 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
- *
- * Version $Id: util.h,v 1.1.1.1 2003/01/30 21:30:19 ernstl Exp $
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef UTIL_H_INCLUDED
 #define UTIL_H_INCLUDED
 #include <glib.h>
+#if __has_include("refocus-config.h")
+#include "refocus-config.h"
+#else
+#define PLUGIN_VERSION "refocus is local"
+#endif
 
 G_BEGIN_DECLS 
-
 
 /* This macro can be used to silence gcc's warnings about unused variables. */
 #ifdef __GNUC__
@@ -31,7 +34,6 @@ G_BEGIN_DECLS
 #else
 #define GCC_UNUSED 
 #endif
-
 
 extern gint floorm (gint a, gint b);
 
@@ -46,6 +48,10 @@ copy_rect (guchar * dest_buf, gint dest_x, gint dest_y,
 extern gint tile_width (void);
 
 extern gint tile_height (void);
+
+gdouble get_pixel (guchar *ptr, gint bpc);
+
+void set_pixel (guchar *dest, gdouble d, gint bpc);
 
 G_END_DECLS
 #endif /* UTIL_H_INCLUDED */
