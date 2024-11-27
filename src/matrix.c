@@ -106,9 +106,18 @@ static int fill_matrix (CMat * matrix, const gint m,
   if (!(init_c_mat (matrix, m)))
     return (0);
 
-  for (y = -m; y <= m; y++) {
-    for (x = -m; x <= m; x++) {
-      *c_mat_eltptr (matrix, x, y) = f (x, y, fun_arg);
+  // This is a symetric fill when looking at the results.
+  // Speed-up this fill by calculating once and copy 4x.
+  //for (y = -m; y <= m; y++) {
+  //  for (x = -m; x <= m; x++) {
+  //    *c_mat_eltptr (matrix, x, y) = f (x, y, fun_arg);
+  //  }
+  for (y = -m; y <= 0; y++) {
+    for (x = -m; x <= 0; x++) {
+      *c_mat_eltptr (matrix, -x, -y) =
+      *c_mat_eltptr (matrix, -x,  y) =
+      *c_mat_eltptr (matrix,  x, -y) =
+      *c_mat_eltptr (matrix,  x,  y) = f (x, y, fun_arg);
     }
   }
   return (1);
@@ -122,9 +131,18 @@ static int fill_matrix2 (CMat * matrix, const gint m,
   if (!(init_c_mat (matrix, m)))
     return (0);
 
-  for (y = -m; y <= m; y++) {
-    for (x = -m; x <= m; x++) {
-      *c_mat_eltptr (matrix, x, y) = f (x, y, fun_arg1, fun_arg2);
+  // This is a symetric fill when looking at the results.
+  // Speed-up this fill by calculating once and copy 4x.
+  //for (y = -m; y <= m; y++) {
+  //  for (x = -m; x <= m; x++) {
+  //    *c_mat_eltptr (matrix, x, y) = f (x, y, fun_arg1, fun_arg2);
+  //  }
+  for (y = -m; y <= 0; y++) {
+    for (x = -m; x <= 0; x++) {
+      *c_mat_eltptr (matrix, -x, -y) =
+      *c_mat_eltptr (matrix, -x,  y) =
+      *c_mat_eltptr (matrix,  x, -y) =
+      *c_mat_eltptr (matrix,  x,  y) = f (x, y, fun_arg1, fun_arg2);
     }
   }
   return (1);
